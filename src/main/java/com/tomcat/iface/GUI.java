@@ -7,7 +7,10 @@ import com.tomcat.core.server.TomcatServer;
 import com.tomcat.core.session.Session;
 import com.tomcat.utils.ServerConfig;
 import com.tomcat.utils.SystemHelper;
-
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.Executors;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -21,12 +24,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.*;
 import javafx.stage.Stage;
 
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.Executors;
-
 public class GUI extends Application {
+
     private static ServerConfig Config;
     private TomcatServer Server;
     private Instant ServerStartTime;
@@ -62,6 +61,7 @@ public class GUI extends Application {
     private Button StopBtn;
 
     public static class SessionRow {
+
         private final SimpleStringProperty Id, Type, Name, Ip, Os, User, Host, Joined;
 
         public SessionRow(Session S) {
@@ -75,22 +75,69 @@ public class GUI extends Application {
             Joined = new SimpleStringProperty(S.GetJoinedAt());
         }
 
-        public String getId() { return Id.get(); }
-        public String getType() { return Type.get(); }
-        public String getName() { return Name.get(); }
-        public String getIp() { return Ip.get(); }
-        public String getOs() { return Os.get(); }
-        public String getUser() { return User.get(); }
-        public String getHost() { return Host.get(); }
-        public String getJoined() { return Joined.get(); }
-        public SimpleStringProperty IdProperty() { return Id; }
-        public SimpleStringProperty TypeProperty() { return Type; }
-        public SimpleStringProperty NameProperty() { return Name; }
-        public SimpleStringProperty IpProperty() { return Ip; }
-        public SimpleStringProperty OsProperty() { return Os; }
-        public SimpleStringProperty UserProperty() { return User; }
-        public SimpleStringProperty HostProperty() { return Host; }
-        public SimpleStringProperty JoinedProperty() { return Joined; }
+        public String getId() {
+            return Id.get();
+        }
+
+        public String getType() {
+            return Type.get();
+        }
+
+        public String getName() {
+            return Name.get();
+        }
+
+        public String getIp() {
+            return Ip.get();
+        }
+
+        public String getOs() {
+            return Os.get();
+        }
+
+        public String getUser() {
+            return User.get();
+        }
+
+        public String getHost() {
+            return Host.get();
+        }
+
+        public String getJoined() {
+            return Joined.get();
+        }
+
+        public SimpleStringProperty IdProperty() {
+            return Id;
+        }
+
+        public SimpleStringProperty TypeProperty() {
+            return Type;
+        }
+
+        public SimpleStringProperty NameProperty() {
+            return Name;
+        }
+
+        public SimpleStringProperty IpProperty() {
+            return Ip;
+        }
+
+        public SimpleStringProperty OsProperty() {
+            return Os;
+        }
+
+        public SimpleStringProperty UserProperty() {
+            return User;
+        }
+
+        public SimpleStringProperty HostProperty() {
+            return Host;
+        }
+
+        public SimpleStringProperty JoinedProperty() {
+            return Joined;
+        }
     }
 
     public static void Launch(ServerConfig Cfg) {
@@ -130,39 +177,38 @@ public class GUI extends Application {
         Logo.setPadding(new Insets(20, 16, 8, 16));
         Label Icon = StyledLabel("◉", 20, RedColor, true);
         VBox Title = new VBox(2);
-        Title.getChildren().addAll(
-            StyledLabel("TOMCAT", 13, TextColor, true),
-            StyledLabel("C2 Framework", 8, MutedColor, false)
-        );
+        Title.getChildren()
+            .addAll(StyledLabel("TOMCAT", 13, TextColor, true), StyledLabel("C2 Framework", 8, MutedColor, false));
         Logo.getChildren().addAll(Icon, Title);
         Sidebar.getChildren().add(Logo);
         Sidebar.getChildren().add(Divider());
 
         TabPane NavTabs = new TabPane();
         NavTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        NavTabs.setStyle(
-            "-fx-background-color: " + NavColor + ";" +
-            "-fx-tab-min-height: 40px;"
-        );
+        NavTabs.setStyle("-fx-background-color: " + NavColor + ";" + "-fx-tab-min-height: 40px;");
 
-        NavTabs.getTabs().addAll(
-            BuildNavTab("⊞  Dashboard", BuildDashboardTab()),
-            BuildNavTab("⊟  Sessions", BuildSessionsTab()),
-            BuildNavTab("⊳  Terminal", BuildTerminalTab()),
-            BuildNavTab("≡  Logs", BuildLogsTab()),
-            BuildNavTab("⚙  Settings", BuildSettingsTab())
-        );
+        NavTabs.getTabs()
+            .addAll(
+                BuildNavTab("⊞  Dashboard", BuildDashboardTab()),
+                BuildNavTab("⊟  Sessions", BuildSessionsTab()),
+                BuildNavTab("⊳  Terminal", BuildTerminalTab()),
+                BuildNavTab("≡  Logs", BuildLogsTab()),
+                BuildNavTab("⚙  Settings", BuildSettingsTab())
+            );
 
         VBox.setVgrow(NavTabs, Priority.ALWAYS);
         Sidebar.getChildren().add(NavTabs);
 
         VBox Footer = new VBox(4);
         Footer.setPadding(new Insets(8, 16, 12, 16));
-        Footer.setStyle("-fx-border-color: " + BorderColor + " transparent transparent transparent; -fx-border-width: 1;");
-        Footer.getChildren().addAll(
-            StatusLabel = StyledLabel("● Offline", 9, RedColor, true),
-            StyledLabel("Author: MatrixTM26", 7, MutedColor, false)
+        Footer.setStyle(
+            "-fx-border-color: " + BorderColor + " transparent transparent transparent; -fx-border-width: 1;"
         );
+        Footer.getChildren()
+            .addAll(
+                StatusLabel = StyledLabel("● Offline", 9, RedColor, true),
+                StyledLabel("Author: MatrixTM26", 7, MutedColor, false)
+            );
         Sidebar.getChildren().add(Footer);
         return Sidebar;
     }
@@ -189,10 +235,7 @@ public class GUI extends Application {
         Right.setAlignment(Pos.CENTER_RIGHT);
         HBox.setHgrow(Right, Priority.ALWAYS);
         Right.getChildren().addAll(UptimeLabel, VDivider(), SessionCountLabel);
-        TopBar.getChildren().addAll(
-            StyledLabel("TOMCAT C2", 12, TextColor, true),
-            Right
-        );
+        TopBar.getChildren().addAll(StyledLabel("TOMCAT C2", 12, TextColor, true), Right);
         Main.setTop(TopBar);
         return Main;
     }
@@ -268,21 +311,22 @@ public class GUI extends Application {
 
         SessionTable = new TableView<>(SessionRows);
         SessionTable.setStyle("-fx-background-color: " + CardColor + "; -fx-text-fill: " + TextColor + ";");
-        String[] ColNames = {"ID", "Type", "Name", "IP", "OS", "User", "Host", "Joined"};
-        String[] Props = {"id", "type", "name", "ip", "os", "user", "host", "joined"};
+        String[] ColNames = { "ID", "Type", "Name", "IP", "OS", "User", "Host", "Joined" };
+        String[] Props = { "id", "type", "name", "ip", "os", "user", "host", "joined" };
         for (int I = 0; I < ColNames.length; I++) {
             TableColumn<SessionRow, String> Col = new TableColumn<>(ColNames[I]);
             Col.setCellValueFactory(new PropertyValueFactory<>(Props[I]));
             Col.setStyle("-fx-text-fill: " + TextColor + ";");
             SessionTable.getColumns().add(Col);
         }
-        SessionTable.getSelectionModel().selectedItemProperty().addListener((Obs, Old, New) -> {
-            if (New != null) {
-                SelectedSessionId = Integer.parseInt(New.getId());
-                if (SelectedAgentLabel != null)
-                    SelectedAgentLabel.setText("● SESSION-" + SelectedSessionId);
-            }
-        });
+        SessionTable.getSelectionModel()
+            .selectedItemProperty()
+            .addListener((Obs, Old, New) -> {
+                if (New != null) {
+                    SelectedSessionId = Integer.parseInt(New.getId());
+                    if (SelectedAgentLabel != null) SelectedAgentLabel.setText("● SESSION-" + SelectedSessionId);
+                }
+            });
         VBox.setVgrow(SessionTable, Priority.ALWAYS);
         Content.getChildren().add(SessionTable);
         return Content;
@@ -301,7 +345,9 @@ public class GUI extends Application {
         ApplyInputStyle(TermInputField);
         SelectedAgentLabel = StyledLabel("○ No agent selected", 9, MutedColor, false);
         Button ClearBtn = StyledButton("Clear", CardColor, false);
-        ClearBtn.setOnAction(E -> { if (TerminalOutput != null) TerminalOutput.clear(); });
+        ClearBtn.setOnAction(E -> {
+            if (TerminalOutput != null) TerminalOutput.clear();
+        });
         HBox.setHgrow(SelectedAgentLabel, Priority.ALWAYS);
         Header.getChildren().addAll(SessionLbl, TermInputField, SelectedAgentLabel, ClearBtn);
         Content.getChildren().add(Header);
@@ -337,7 +383,10 @@ public class GUI extends Application {
         Toolbar.setAlignment(Pos.CENTER_RIGHT);
         Button ExportBtn = StyledButton("Export", CardColor, false);
         Button ClearBtn = StyledButton("Clear", RedColor, false);
-        ClearBtn.setOnAction(E -> { LogEntries.clear(); if (LogOutput != null) LogOutput.clear(); });
+        ClearBtn.setOnAction(E -> {
+            LogEntries.clear();
+            if (LogOutput != null) LogOutput.clear();
+        });
         Toolbar.getChildren().addAll(ExportBtn, ClearBtn);
         Content.getChildren().add(Toolbar);
 
@@ -394,12 +443,19 @@ public class GUI extends Application {
     private void StartServer() {
         String Host = HostField.getText().trim();
         int Port;
-        try { Port = Integer.parseInt(PortField.getText().trim()); }
-        catch (NumberFormatException E) { ShowAlert("Invalid port number"); return; }
+        try {
+            Port = Integer.parseInt(PortField.getText().trim());
+        } catch (NumberFormatException E) {
+            ShowAlert("Invalid port number");
+            return;
+        }
         Server = new TomcatServer(Host, Port, Config.IsMtlsEnabled(), Config);
         Server.AddEventListener(this::EventHandler);
         boolean[] Result = Server.StartServer();
-        if (!Result[0]) { ShowAlert("Failed to start server"); return; }
+        if (!Result[0]) {
+            ShowAlert("Failed to start server");
+            return;
+        }
         ServerStartTime = Instant.now();
         Thread T = new Thread(Server::AcceptConnections, "AcceptConnections");
         T.setDaemon(true);
@@ -450,25 +506,36 @@ public class GUI extends Application {
         String Cmd = CmdInputField.getText().trim();
         if (SidStr.isEmpty() || Cmd.isEmpty()) return;
         int Sid;
-        try { Sid = Integer.parseInt(SidStr); }
-        catch (NumberFormatException E) { WriteTerminal("[!] Invalid session ID\n", true); return; }
-        if (Server == null) { WriteTerminal("[!] Server not running\n", true); return; }
+        try {
+            Sid = Integer.parseInt(SidStr);
+        } catch (NumberFormatException E) {
+            WriteTerminal("[!] Invalid session ID\n", true);
+            return;
+        }
+        if (Server == null) {
+            WriteTerminal("[!] Server not running\n", true);
+            return;
+        }
         WriteTerminal("❯ " + Cmd + "\n", false);
         CmdInputField.clear();
         AddLog("[>] #" + Sid + ": " + Cmd);
         final int FinalSid = Sid;
-        Executors.newSingleThreadExecutor().submit(() -> {
-            String[] Result = Server.ExecuteCommand(FinalSid, Cmd);
-            boolean Ok = Boolean.parseBoolean(Result[0]);
-            Platform.runLater(() -> {
-                WriteTerminal(Result[1] + "\n\n", false);
-                AddLog((Ok ? "[+]" : "[!]") + " #" + FinalSid + ": " + (Ok ? "OK" : Result[1]));
+        Executors.newSingleThreadExecutor()
+            .submit(() -> {
+                String[] Result = Server.ExecuteCommand(FinalSid, Cmd);
+                boolean Ok = Boolean.parseBoolean(Result[0]);
+                Platform.runLater(() -> {
+                    WriteTerminal(Result[1] + "\n\n", false);
+                    AddLog((Ok ? "[+]" : "[!]") + " #" + FinalSid + ": " + (Ok ? "OK" : Result[1]));
+                });
             });
-        });
     }
 
     private void OpenExecuteWindow() {
-        if (SelectedSessionId < 0) { ShowAlert("Select a session first"); return; }
+        if (SelectedSessionId < 0) {
+            ShowAlert("Select a session first");
+            return;
+        }
         Stage Win = new Stage();
         Win.setTitle("Execute — SESSION-" + SelectedSessionId);
         Win.setWidth(650);
@@ -492,10 +559,11 @@ public class GUI extends Application {
             if (Cmd.isEmpty()) return;
             Out.appendText("❯ " + Cmd + "\n");
             Entry.clear();
-            Executors.newSingleThreadExecutor().submit(() -> {
-                String[] Result = Server.ExecuteCommand(Sid, Cmd);
-                Platform.runLater(() -> Out.appendText(Result[1] + "\n\n"));
-            });
+            Executors.newSingleThreadExecutor()
+                .submit(() -> {
+                    String[] Result = Server.ExecuteCommand(Sid, Cmd);
+                    Platform.runLater(() -> Out.appendText(Result[1] + "\n\n"));
+                });
         };
         Run.setOnAction(E -> Exec.run());
         Entry.setOnAction(E -> Exec.run());
@@ -507,22 +575,36 @@ public class GUI extends Application {
     }
 
     private void KillSelected() {
-        if (SelectedSessionId < 0) { ShowAlert("Select a session first"); return; }
+        if (SelectedSessionId < 0) {
+            ShowAlert("Select a session first");
+            return;
+        }
         Alert Confirm = new Alert(Alert.AlertType.CONFIRMATION, "Terminate SESSION-" + SelectedSessionId + "?");
-        Confirm.showAndWait().ifPresent(R -> {
-            if (R == ButtonType.OK) {
-                Server.RemoveSession(SelectedSessionId);
-                SelectedSessionId = -1;
-                RefreshSessions();
-                if (SelectedAgentLabel != null) SelectedAgentLabel.setText("○ No agent selected");
-            }
-        });
+        Confirm.showAndWait()
+            .ifPresent(R -> {
+                if (R == ButtonType.OK) {
+                    Server.RemoveSession(SelectedSessionId);
+                    SelectedSessionId = -1;
+                    RefreshSessions();
+                    if (SelectedAgentLabel != null) SelectedAgentLabel.setText("○ No agent selected");
+                }
+            });
     }
 
     private void EventHandler(EventType Type, Map<String, Object> Data) {
         switch (Type) {
             case AgentConnected -> {
-                AddLog("[+] [" + Data.get("Type") + "] SESSION-" + Data.get("ID") + ": " + Data.get("AgentName") + " (" + Data.get("OS") + ")");
+                AddLog(
+                    "[+] [" +
+                    Data.get("Type") +
+                    "] SESSION-" +
+                    Data.get("ID") +
+                    ": " +
+                    Data.get("AgentName") +
+                    " (" +
+                    Data.get("OS") +
+                    ")"
+                );
                 Platform.runLater(this::RefreshSessions);
             }
             case AgentDisconnected -> {
@@ -552,11 +634,15 @@ public class GUI extends Application {
     private void StartUptimeTimer() {
         Thread Timer = new Thread(() -> {
             while (true) {
-                try { Thread.sleep(1000); } catch (InterruptedException Ignored) {}
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException Ignored) {}
                 if (ServerStartTime != null) {
                     long S = Duration.between(ServerStartTime, Instant.now()).getSeconds();
                     String Up = SystemHelper.FormatUptime(S);
-                    Platform.runLater(() -> { if (UptimeLabel != null) UptimeLabel.setText("⏱ " + Up); });
+                    Platform.runLater(() -> {
+                        if (UptimeLabel != null) UptimeLabel.setText("⏱ " + Up);
+                    });
                 }
             }
         });
@@ -571,10 +657,16 @@ public class GUI extends Application {
         Card.setMinHeight(70);
         HBox Row = new HBox(8);
         Row.setAlignment(Pos.CENTER_LEFT);
-        Row.getChildren().addAll(
-            StyledLabel(Icon, 18, Color, false),
-            new VBox(2) {{ getChildren().addAll(StyledLabel(Title, 8, MutedColor, false), StyledLabel(Value, 14, Color, true)); }}
-        );
+        Row.getChildren()
+            .addAll(
+                StyledLabel(Icon, 18, Color, false),
+                new VBox(2) {
+                    {
+                        getChildren()
+                            .addAll(StyledLabel(Title, 8, MutedColor, false), StyledLabel(Value, 14, Color, true));
+                    }
+                }
+            );
         Card.getChildren().add(Row);
         return Card;
     }
@@ -600,8 +692,12 @@ public class GUI extends Application {
     private Button StyledButton(String Text, String Bg, boolean Outline) {
         Button B = new Button(Text);
         B.setStyle(
-            "-fx-background-color: " + Bg + ";" +
-            "-fx-text-fill: " + (Outline ? Bg : "#ffffff") + ";" +
+            "-fx-background-color: " +
+            Bg +
+            ";" +
+            "-fx-text-fill: " +
+            (Outline ? Bg : "#ffffff") +
+            ";" +
             "-fx-font-family: 'Segoe UI';" +
             "-fx-font-size: 9px;" +
             "-fx-font-weight: bold;" +
@@ -614,9 +710,15 @@ public class GUI extends Application {
 
     private void ApplyInputStyle(TextField F) {
         F.setStyle(
-            "-fx-background-color: " + Card2Color + ";" +
-            "-fx-text-fill: " + TextColor + ";" +
-            "-fx-prompt-text-fill: " + MutedColor + ";" +
+            "-fx-background-color: " +
+            Card2Color +
+            ";" +
+            "-fx-text-fill: " +
+            TextColor +
+            ";" +
+            "-fx-prompt-text-fill: " +
+            MutedColor +
+            ";" +
             "-fx-font-family: 'Consolas';" +
             "-fx-font-size: 10px;" +
             "-fx-padding: 6 10 6 10;" +
@@ -627,7 +729,9 @@ public class GUI extends Application {
     private void ApplyTermStyle(TextArea A) {
         A.setStyle(
             "-fx-background-color: #0c1018;" +
-            "-fx-text-fill: " + GreenColor + ";" +
+            "-fx-text-fill: " +
+            GreenColor +
+            ";" +
             "-fx-font-family: 'Consolas';" +
             "-fx-font-size: 10px;" +
             "-fx-padding: 8 12 8 12;"

@@ -2,13 +2,13 @@ package com.tomcat.iface.banner;
 
 import com.tomcat.core.output.Logger;
 import com.tomcat.utils.AnsiColor;
-
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Random;
 
 public final class TBanner {
+
     private static final List<String> Quotes = List.of(
         "                             ♠  Access Denied? Watch Me ♠                      ",
         "                      ♠  Encrypt Your Fear, Decrypt Your Power ♠               ",
@@ -24,7 +24,11 @@ public final class TBanner {
 
     public static void Logo() {
         String Msg = Quotes.get(new Random().nextInt(Quotes.size()));
-        String Banner = "\n" + AnsiColor.Bold + AnsiColor.Red + "\n" +
+        String Banner =
+            "\n" +
+            AnsiColor.Bold +
+            AnsiColor.Red +
+            "\n" +
             "        ___________________      _____  _________     ________________ _________  ________\n" +
             "        \\__    ___/\\_____  \\    /     \\ \\_   ___ \\   /  _  \\__    ___/ \\_   ___ \\ \\_____  \\\n" +
             "          |    |    /   |   \\  /  \\ /  \\/    \\  \\/  /  /_\\  \\|    |    /    \\  \\/  /  ____/\n" +
@@ -32,7 +36,10 @@ public final class TBanner {
             "          |____|   \\_______  /\\____|__  /\\______  /\\____|__  /____|     \\______  /\\_______ \\\n" +
             "                           \\/         \\/        \\/         \\/                  \\/         \\/\n" +
             "                                            Framework V2.0 (Java)\n" +
-            AnsiColor.White + Msg + AnsiColor.Reset + "\n";
+            AnsiColor.White +
+            Msg +
+            AnsiColor.Reset +
+            "\n";
         Logger.Custom(Banner, 1);
     }
 }
