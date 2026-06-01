@@ -91,6 +91,10 @@ public class TomcatServer extends BaseServer {
         int SessionId = -1;
         try {
             Map<String, Object> Info = DoHandshake(Client);
+            if (Info == null) {
+                Client.close();
+                return;
+            }
             Session S = new Session();
             S.SetSocket(Client);
             S.SetRemoteAddress(Client.getRemoteSocketAddress().toString());
@@ -119,6 +123,9 @@ public class TomcatServer extends BaseServer {
                     }
                     S.SetCertCn(AgentName);
                 }
+            }
+            if (!GetStr(Info, "hostname").equals("Unknown")) {
+                AgentName = GetStr(Info, "hostname");
             }
             S.SetAgentName(AgentName);
             SessionId = Sessions.Add(S);

@@ -58,14 +58,43 @@ public abstract class BaseServer {
         ClientSocket.setSoTimeout(Config.GetConnectionTimeout());
         OutputStream Out = ClientSocket.getOutputStream();
         Out.write(Crypto.GetKey());
+        Out.write('\n');
         Out.flush();
-        Thread.sleep(200);
-        byte[] Buf = new byte[4096];
-        int N = ClientSocket.getInputStream().read(Buf);
-        if (N <= 0) throw new IOException("No agent info received");
-        String Json = new String(Buf, 0, N, "UTF-8");
-        Map<String, Object> Info = GsonInstance.fromJson(Json, Map.class);
-        return Info;
+        Thread.sleep(300);
+
+        ByteArrayOutputStream Buf = new ByteArrayOutputStream();
+        InputStream In = ClientSocket.getInputStream();
+        long Deadline = System.currentTimeMillis() + Config.GetConnectionTimeout();
+        while (System.currentTimeMillis() < Deadline) {
+            if (In.available() > 0) {
+                int B = In.read();
+                if (B == -1) break;
+                Buf.write(B);
+                if (Buf.size() > 2) {
+                    byte[] Raw = Buf.toByteArray();
+                    if (Raw[Raw.length - 1] == '\n' || Raw[Raw.length - 1] == '}') {
+                        String Json = Buf.toString("UTF-8").trim();
+                        if (Json.startsWith("{")) {
+                            try {
+                                Map<String, Object> Info = GsonInstance.fromJson(Json, Map.class);
+                                ClientSocket.setSoTimeout(0);
+                                return Info;
+                            } catch (Exception Ignored) {}
+                        }
+                    }
+                }
+            } else {
+                Thread.sleep(50);
+            }
+        }
+
+        String Json = Buf.toString("UTF-8").trim();
+        if (Json.startsWith("{")) {
+            Map<String, Object> Info = GsonInstance.fromJson(Json, Map.class);
+            ClientSocket.setSoTimeout(0);
+            return Info;
+        }
+        throw new IOException("Invalid agent info: " + Json);
     }
 
     protected void MonitorSession(int SessionId, Socket Sock) {
