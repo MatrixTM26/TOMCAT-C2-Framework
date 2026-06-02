@@ -24,17 +24,25 @@ jobs:
           cache: maven
 
       - name: Clear Maven JavaFX Cache
-        run: |
-          rm -rf ~/.m2/repository/org/openjfx
+        run: rm -rf ~/.m2/repository/org/openjfx
 
       - name: Build With Maven
         run: mvn clean package -DskipTests -Plinux
 
-      - name: Rename JAR
+      - name: Copy JAR To Output Folder
         run: |
           mkdir -p output
           JAR=$(ls target/*.jar | grep -v original | head -1)
           cp "$JAR" output/tomcat-c2.jar
+          echo "JAR copied: $JAR"
+
+      - name: Commit Output To Repo
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add output/tomcat-c2.jar
+          git diff --cached --quiet || git commit -m "ci: build #${{ github.run_number }} [skip ci]"
+          git push
 
       - name: Upload JAR As Artifact
         uses: actions/upload-artifact@v4
