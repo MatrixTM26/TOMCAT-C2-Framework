@@ -74,11 +74,47 @@
 
     <profiles>
         <profile>
-            <id>linux</id>
+            <id>linux-aarch64</id>
             <activation>
-                <activeByDefault>true</activeByDefault>
                 <os>
                     <name>Linux</name>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>linux-aarch64</javafx.platform>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux-arm</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <arch>arm</arch>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>linux-aarch64</javafx.platform>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <javafx.platform>linux</javafx.platform>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux-x86</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <arch>x86_64</arch>
                 </os>
             </activation>
             <properties>
