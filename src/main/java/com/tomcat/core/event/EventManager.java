@@ -6,15 +6,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class EventManager {
-
     public enum EventType {
-        ServerStarted,
-        ServerStopped,
-        AgentConnected,
-        AgentDisconnected,
-        AgentRemoved,
-        Error,
-        CommandExecuted,
+        ServerStarted, ServerStopped,
+        AgentConnected, AgentDisconnected, AgentRemoved,
+        Error, CommandExecuted
     }
 
     @FunctionalInterface
@@ -39,13 +34,9 @@ public class EventManager {
 
     public void Trigger(EventType Type, Map<String, Object> Data) {
         List<EventListener> Snapshot = new ArrayList<>(Listeners);
-        Snapshot.forEach(L ->
-            Executor.submit(() -> {
-                try {
-                    L.OnEvent(Type, Data);
-                } catch (Exception Ignored) {}
-            })
-        );
+        Snapshot.forEach(L -> Executor.submit(() -> {
+            try { L.OnEvent(Type, Data); } catch (Exception Ignored) {}
+        }));
     }
 
     public void Trigger(EventType Type) {
