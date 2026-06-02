@@ -2,9 +2,10 @@ name: Build Java Maven Project
 
 on:
   push:
-    branches: [ "main", "master", "dev" ]
-  pull_request:
-    branches: [ "main", "master", "dev" ]
+    branches: [ "dev" ]
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -24,13 +25,15 @@ jobs:
       - name: Build with Maven
         run: mvn clean package -DskipTests
 
-      - name: Copy JAR to repo directory
+      - name: Copy JAR to output folder
         run: |
-          mkdir -p build-output
-          cp target/*.jar build-output/
+          mkdir -p output
+          cp target/*.jar output/
 
-      - name: Upload artifact (optional)
-        uses: actions/upload-artifact@v4
-        with:
-          name: jar-output
-          path: build-output/
+      - name: Commit JAR to repo
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add output/
+          git commit -m "ci: update build jar" || exit 0
+          git push
