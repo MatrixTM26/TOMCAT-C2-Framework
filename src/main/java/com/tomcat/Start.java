@@ -121,7 +121,7 @@ public class Start {
                 }
                 default -> {
                     Logger.Messages("Interface: Web Panel (HTTP)");
-                    WebApp App = new WebApp(Config);
+                    WebApp App = new WebApp(Config, UseMtls);
                     App.Run(Host, Port);
                     Thread.currentThread().join();
                 }
@@ -151,11 +151,12 @@ public class Start {
             String Host, int Port, boolean UseMtls,
             boolean Persistence, boolean HideConsole) {
         try {
-            CertificateManager Mgr = new CertificateManager("Certs", Config.GetKeystorePassword());
             if (!Files.exists(Paths.get("Certs/ca.p12"))) {
                 Logger.Warnings("CA Not Found. Run: java -jar tomcat-c2.jar --init-certs");
                 return;
             }
+            CertificateManager Mgr = new CertificateManager("Certs", Config.GetKeystorePassword());
+            Mgr.CreateCa();
             String CertPath = Mgr.CreateAgentCertificate(AgentId, UseRawName, 365);
             String AgentName = UseRawName ? AgentId : "Agent-" + AgentId;
             String DeployDir = "IMPLANT/" + AgentName.toUpperCase();

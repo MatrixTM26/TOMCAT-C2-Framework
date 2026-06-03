@@ -126,7 +126,7 @@ public class CLI {
         Map<String, Integer> Stats = Server.GetSessions().GetStats();
         System.out.println(RenderBox("SESSION STATISTICS"));
         System.out.println();
-        System.out.printf("  %sServer Key     %s%s%n", AnsiColor.Red, AnsiColor.White, new String(Server.GetCrypto().GetKey()));
+        System.out.printf("  %sServer Key     %s%s%n", AnsiColor.Red, AnsiColor.White, java.util.Base64.getEncoder().encodeToString(Server.GetCrypto().GetKey()));
         System.out.printf("  %sServer Address %s%s:%d%n", AnsiColor.Red, AnsiColor.White, Server.GetHost(), Server.GetPort());
         System.out.printf("  %sTotal          %s%d%n", AnsiColor.Red, AnsiColor.White, Stats.get("Total"));
         System.out.printf("  %sTOMCAT         %s%d%n", AnsiColor.Red, AnsiColor.White, Stats.get("TOMCAT"));
