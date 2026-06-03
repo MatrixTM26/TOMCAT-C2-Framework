@@ -39,11 +39,19 @@ public class WebApp {
         try {
             Path JarPath = Paths.get(WebApp.class.getProtectionDomain().getCodeSource().getLocation().toURI());
             Path Parent = JarPath.getParent();
-            if (Parent != null && Files.isDirectory(Parent)) {
-                return Parent.toAbsolutePath();
+            if (Parent != null) {
+                if (Files.exists(Parent.resolve("config"))) return Parent.toAbsolutePath();
+                Path GrandParent = Parent.getParent();
+                if (
+                    GrandParent != null && Files.exists(GrandParent.resolve("config"))
+                ) return GrandParent.toAbsolutePath();
             }
         } catch (Exception Ignored) {}
-        return Paths.get("").toAbsolutePath();
+        Path Cwd = Paths.get("").toAbsolutePath();
+        if (Files.exists(Cwd.resolve("config"))) return Cwd;
+        Path CwdParent = Cwd.getParent();
+        if (CwdParent != null && Files.exists(CwdParent.resolve("config"))) return CwdParent;
+        return Cwd;
     }
 
     private Path ResolvePath(String Relative) {
@@ -262,26 +270,24 @@ public class WebApp {
 
     class StaticHandler implements HttpHandler {
 
+        private final String StaticPrefix = "/static";
+
         @Override
         public void handle(HttpExchange E) throws IOException {
             String ReqPath = E.getRequestURI().getPath();
-            if (ReqPath.equals("/")) ReqPath = "/index.html";
 
             Path Target = null;
 
-            if (ReqPath.equals("/index.html")) {
+            if (ReqPath.equals("/") || ReqPath.equals("/index.html")) {
                 Path TplPath = ResolvePath(Config.GetTemplateDir() + "/index.html");
                 if (Files.exists(TplPath)) Target = TplPath;
-            }
-
-            if (Target == null) {
+            } else if (ReqPath.startsWith(StaticPrefix + "/")) {
+                String RelPath = ReqPath.substring(StaticPrefix.length());
+                Path StaticPath = ResolvePath(Config.GetStaticDir() + RelPath);
+                if (Files.exists(StaticPath) && !Files.isDirectory(StaticPath)) Target = StaticPath;
+            } else {
                 Path StaticPath = ResolvePath(Config.GetStaticDir() + ReqPath);
                 if (Files.exists(StaticPath) && !Files.isDirectory(StaticPath)) Target = StaticPath;
-            }
-
-            if (Target == null) {
-                Path TplPath = ResolvePath(Config.GetTemplateDir() + ReqPath);
-                if (Files.exists(TplPath) && !Files.isDirectory(TplPath)) Target = TplPath;
             }
 
             if (Target == null) {
