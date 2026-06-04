@@ -2,19 +2,19 @@ package com.tomcat;
 
 import com.tomcat.core.crypto.CertificateManager;
 import com.tomcat.core.output.Logger;
-import com.tomcat.iface.GUI;
 import com.tomcat.iface.CLI;
+import com.tomcat.iface.GUI;
 import com.tomcat.iface.WebApp;
 import com.tomcat.iface.banner.AUTHBanner;
 import com.tomcat.iface.banner.TBanner;
 import com.tomcat.utils.ServerConfig;
 import com.tomcat.utils.SystemHelper;
-
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 
 public class Start {
+
     private static ServerConfig Config;
 
     public static void main(String[] Args) {
@@ -45,7 +45,9 @@ public class Start {
             TBanner.Logo();
             AUTHBanner.Logo();
             String AgentHost = GetArg(ArgList, "-ah", "--agent-host", Config.GetServerHost());
-            int AgentPort = Integer.parseInt(GetArg(ArgList, "-ap", "--agent-port", String.valueOf(Config.GetServerPort())));
+            int AgentPort = Integer.parseInt(
+                GetArg(ArgList, "-ap", "--agent-port", String.valueOf(Config.GetServerPort()))
+            );
             boolean AgentMtls = ArgList.contains("-am") || ArgList.contains("--agent-mtls");
             boolean Persistence = ArgList.contains("-ps") || ArgList.contains("--persistence");
             boolean HideConsole = ArgList.contains("-hc") || ArgList.contains("--hide-console");
@@ -60,7 +62,9 @@ public class Start {
             int Count = Integer.parseInt(GetArg(ArgList, "-c", "--gen-agent-count", "10"));
             String Prefix = GetArg(ArgList, "-u", "--gen-agent-prefix", "agent");
             String AgentHost = GetArg(ArgList, "-ah", "--agent-host", Config.GetServerHost());
-            int AgentPort = Integer.parseInt(GetArg(ArgList, "-ap", "--agent-port", String.valueOf(Config.GetServerPort())));
+            int AgentPort = Integer.parseInt(
+                GetArg(ArgList, "-ap", "--agent-port", String.valueOf(Config.GetServerPort()))
+            );
             boolean AgentMtls = ArgList.contains("-am") || ArgList.contains("--agent-mtls");
             boolean Persistence = ArgList.contains("-ps") || ArgList.contains("--persistence");
             boolean HideConsole = ArgList.contains("-hc") || ArgList.contains("--hide-console");
@@ -147,9 +151,15 @@ public class Start {
         }
     }
 
-    private static void GenerateAgentCert(String AgentId, boolean UseRawName,
-            String Host, int Port, boolean UseMtls,
-            boolean Persistence, boolean HideConsole) {
+    private static void GenerateAgentCert(
+        String AgentId,
+        boolean UseRawName,
+        String Host,
+        int Port,
+        boolean UseMtls,
+        boolean Persistence,
+        boolean HideConsole
+    ) {
         try {
             if (!Files.exists(Paths.get("Certs/ca.p12"))) {
                 Logger.Warnings("CA Not Found. Run: java -jar tomcat-c2.jar --init-certs");
@@ -162,7 +172,11 @@ public class Start {
             String DeployDir = "IMPLANT/" + AgentName.toUpperCase();
             Files.createDirectories(Paths.get(DeployDir));
             Files.copy(Paths.get(CertPath), Paths.get(DeployDir + "/agent.p12"), StandardCopyOption.REPLACE_EXISTING);
-            Files.copy(Paths.get("Certs/ca.p12"), Paths.get(DeployDir + "/ca.p12"), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(
+                Paths.get("Certs/ca.p12"),
+                Paths.get(DeployDir + "/ca.p12"),
+                StandardCopyOption.REPLACE_EXISTING
+            );
             WriteAgentReadme(DeployDir, AgentName, Host, Port, UseMtls, Persistence, HideConsole);
             Logger.Messages("Agent Deployment Package: " + DeployDir);
             Logger.Messages("Server: " + Host + ":" + Port);
@@ -172,9 +186,15 @@ public class Start {
         }
     }
 
-    private static void GenerateMultipleAgents(int Count, String Prefix,
-            String Host, int Port, boolean UseMtls,
-            boolean Persistence, boolean HideConsole) {
+    private static void GenerateMultipleAgents(
+        int Count,
+        String Prefix,
+        String Host,
+        int Port,
+        boolean UseMtls,
+        boolean Persistence,
+        boolean HideConsole
+    ) {
         Logger.Messages("Generating " + Count + " agents with prefix: " + Prefix);
         int Success = 0;
         for (int I = 1; I <= Count; I++) {
@@ -218,8 +238,15 @@ public class Start {
         }
     }
 
-    private static void WriteAgentReadme(String Dir, String Name, String Host,
-            int Port, boolean Mtls, boolean Persistence, boolean HideConsole) {
+    private static void WriteAgentReadme(
+        String Dir,
+        String Name,
+        String Host,
+        int Port,
+        boolean Mtls,
+        boolean Persistence,
+        boolean HideConsole
+    ) {
         try (PrintWriter W = new PrintWriter(Dir + "/README.txt")) {
             W.println("TOMCAT C2 Agent - " + Name);
             W.println("Configuration:");
@@ -248,43 +275,45 @@ public class Start {
     }
 
     private static void PrintHelp() {
-        System.out.println("""
-            TOMCAT C2 Framework V2 (Java)
+        System.out.println(
+            """
+                TOMCAT C2 Framework V2 (Java)
 
-            Options:
-              -h / --help               Show this help
-              -i / --init-certs         Initialize MTLS certificates
+                Options:
+                  -h / --help               Show this help
+                  -i / --init-certs         Initialize MTLS certificates
 
-            Server Options:
-              -S / --host               Server host address
-              -p / --port               Web panel port (default: 5000)
-              -T / --mtls               Enable MTLS authentication
-              -M / --meterpreter        Enable multi-protocol mode
-              -C / --cli-mode           CLI interface
-              -G / --gui-mode           JavaFX GUI interface
-              -W / --web-mode           Web panel interface (default)
+                Server Options:
+                  -S / --host               Server host address
+                  -p / --port               Web panel port (default: 5000)
+                  -T / --mtls               Enable MTLS authentication
+                  -M / --meterpreter        Enable multi-protocol mode
+                  -C / --cli-mode           CLI interface
+                  -G / --gui-mode           JavaFX GUI interface
+                  -W / --web-mode           Web panel interface (default)
 
-            Agent Options:
-              -a / --gen-agent <id>     Generate single agent certificate
-              -m / --gen-multi-agent    Generate multiple agent certificates
-              -c / --gen-agent-count    Number of agents to generate
-              -u / --gen-agent-prefix   Agent name prefix
-              -l / --list-agents        List all agent certificates
-              -r / --revoke-agent <id>  Revoke agent certificate
-              -ah / --agent-host        C2 host for agent configuration
-              -ap / --agent-port        C2 port for agent configuration
-              -am / --agent-mtls        Enable MTLS for agent
-              -ps / --persistence       Enable persistence for agent
-              -hc / --hide-console      Hide console window (Windows)
+                Agent Options:
+                  -a / --gen-agent <id>     Generate single agent certificate
+                  -m / --gen-multi-agent    Generate multiple agent certificates
+                  -c / --gen-agent-count    Number of agents to generate
+                  -u / --gen-agent-prefix   Agent name prefix
+                  -l / --list-agents        List all agent certificates
+                  -r / --revoke-agent <id>  Revoke agent certificate
+                  -ah / --agent-host        C2 host for agent configuration
+                  -ap / --agent-port        C2 port for agent configuration
+                  -am / --agent-mtls        Enable MTLS for agent
+                  -ps / --persistence       Enable persistence for agent
+                  -hc / --hide-console      Hide console window (Windows)
 
-            Examples:
-              java -jar tomcat-c2.jar
-              java -jar tomcat-c2.jar -C
-              java -jar tomcat-c2.jar -G
-              java -jar tomcat-c2.jar --mtls
-              java -jar tomcat-c2.jar -i
-              java -jar tomcat-c2.jar -a myagent -ah 192.168.1.1 -ap 4444 -am
-              java -jar tomcat-c2.jar -m -c 5 -u team -ah 192.168.1.1 -ap 4444
-        """);
+                Examples:
+                  java -jar tomcat-c2.jar
+                  java -jar tomcat-c2.jar -C
+                  java -jar tomcat-c2.jar -G
+                  java -jar tomcat-c2.jar --mtls
+                  java -jar tomcat-c2.jar -i
+                  java -jar tomcat-c2.jar -a myagent -ah 192.168.1.1 -ap 4444 -am
+                  java -jar tomcat-c2.jar -m -c 5 -u team -ah 192.168.1.1 -ap 4444
+            """
+        );
     }
 }

@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 
 public final class SystemHelper {
+
     private SystemHelper() {}
 
     public static boolean IsWindows() {

@@ -33,7 +33,7 @@ jobs:
         run: |
           mkdir -p output
           JAR=$(ls target/*.jar | grep -v original | head -1)
-          cp "$JAR" output/tomcat-c2.jar
+          cp -r "$JAR" output/tomcat-c2.jar
           echo "JAR copied: $JAR"
 
       - name: Commit Output To Repo

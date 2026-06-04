@@ -53,20 +53,11 @@
 
   <section id="home" class="hero">
     <div class="hero-bg-wrap">
-      <img src="static/svg/hero-bg.svg" class="hero-bg-img" alt="" aria-hidden="true" />
+      <canvas id="netCanvas" class="net-canvas" aria-hidden="true"></canvas>
       <div class="hero-bg-fade"></div>
     </div>
 
     <div class="hero-body">
-      <div class="hero-chip reveal">
-        <span class="chip-dot"></span>
-        <span>Red Team Framework</span>
-        <span class="chip-sep"></span>
-        <span>Java</span>
-        <span class="chip-sep"></span>
-        <span>OpenJDK 17+</span>
-      </div>
-
       <h1 class="hero-heading reveal reveal-d1">
         <span class="h-line">TOMCAT</span>
         <span class="h-line h-accent">C2 FRAMEWORK</span>
@@ -92,28 +83,9 @@
         <a href="https://github.com/MatrixTM26/TOMCAT-C2-Framework" target="_blank" class="cta-outline"><i class="fab fa-github"></i>View Source</a>
       </div>
 
-      <div class="hero-terminal reveal reveal-d5">
-        <div class="term-bar">
-          <span class="term-dot red"></span>
-          <span class="term-dot yellow"></span>
-          <span class="term-dot green"></span>
-          <span class="term-title">tomcat-c2 — operator console</span>
-        </div>
-        <div class="term-body">
-          <div class="term-line"><span class="t-dim">$</span> java -jar tomcat-c2.jar</div>
-          <div class="term-line t-gap">
-            <span class="t-green">  ████████╗ ██████╗ ███╗   ███╗ ██████╗ █████╗ ████████╗</span>
-          </div>
-          <div class="term-line"><span class="t-green">  ╚══██╔══╝██╔═══██╗████╗ ████║██╔════╝██╔══██╗╚══██╔══╝</span></div>
-          <div class="term-line"><span class="t-green">     ██║   ██║   ██║██╔████╔██║██║     ███████║   ██║   </span></div>
-          <div class="term-line"><span class="t-green">     ██║   ██║   ██║██║╚██╔╝██║██║     ██╔══██║   ██║   </span></div>
-          <div class="term-line"><span class="t-green">     ██║   ╚██████╔╝██║ ╚═╝ ██║╚██████╗██║  ██║   ██║   </span></div>
-          <div class="term-line t-gap"><span class="t-dim">  C2 Framework v1.0 — Authorized Use Only</span></div>
-          <div class="term-line"><span class="t-green">[*]</span> <span class="t-dim">Listener started on</span> <span class="t-white">0.0.0.0:4444</span></div>
-          <div class="term-line"><span class="t-green">[+]</span> <span class="t-dim">Session opened:</span> <span class="t-white">192.168.1.42</span> <span class="t-dim">→ session-1</span></div>
-          <div class="term-line"><span class="t-green">[+]</span> <span class="t-dim">Session opened:</span> <span class="t-white">10.0.0.15</span> <span class="t-dim">→ session-2</span></div>
-          <div class="term-line t-gap"><span class="t-dim">tomcat-c2</span> <span class="t-white">»</span> <span class="term-cursor">█</span></div>
-        </div>
+      <div class="hero-img-wrap reveal reveal-d5">
+        <div class="hero-img-glow"></div>
+        <img src="public/w1.png" alt="TOMCAT C2 Console" class="hero-screenshot" />
       </div>
     </div>
   </section>
