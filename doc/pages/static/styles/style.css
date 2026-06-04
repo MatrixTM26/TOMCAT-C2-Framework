@@ -34,6 +34,7 @@
 html {
   scroll-behavior: smooth;
   font-size: 16px;
+  overflow-x: hidden;
 }
 
 body {
@@ -43,6 +44,8 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  width: 100%;
+  max-width: 100vw;
 }
 
 .noise-overlay {
@@ -86,6 +89,7 @@ pre code {
   max-width: 1180px;
   margin: 0 auto;
   padding: 0 24px;
+  width: 100%;
 }
 
 .navbar {
@@ -115,7 +119,7 @@ pre code {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 16px;
 }
 
 .nav-brand {
@@ -129,6 +133,7 @@ pre code {
 .nav-logo {
   width: 36px;
   height: 36px;
+  flex-shrink: 0;
 }
 
 .nav-title {
@@ -137,6 +142,7 @@ pre code {
   font-weight: 700;
   color: var(--white);
   letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .nav-title .accent {
@@ -147,17 +153,20 @@ pre code {
   display: flex;
   align-items: center;
   list-style: none;
-  gap: 4px;
+  gap: 2px;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .nav-link {
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: var(--radius);
   color: var(--white-soft);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 500;
   transition: all var(--transition);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .nav-link:hover,
@@ -175,11 +184,13 @@ pre code {
   border: 1px solid rgba(74, 222, 128, 0.25);
   border-radius: var(--radius);
   color: var(--lime);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  margin-left: 8px;
+  margin-left: 6px;
   transition: all var(--transition);
   text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .nav-github:hover {
@@ -201,6 +212,7 @@ pre code {
   justify-content: center;
   font-size: 1.1rem;
   transition: all var(--transition);
+  flex-shrink: 0;
 }
 
 .burger:hover {
@@ -273,23 +285,27 @@ pre code {
   align-items: center;
   overflow: hidden;
   padding-top: var(--nav-h);
+  width: 100%;
 }
 
 .hero-bg {
   position: absolute;
   inset: 0;
   z-index: 0;
+  overflow: hidden;
 }
 
 .hero-svg {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .hero-content {
   position: relative;
   z-index: 1;
+  width: 100%;
   max-width: 1180px;
   margin: 0 auto;
   padding: 80px 24px;
@@ -314,7 +330,7 @@ pre code {
 
 .hero-title {
   font-family: var(--font-display);
-  font-size: clamp(3.5rem, 9vw, 7.5rem);
+  font-size: clamp(3rem, 8vw, 7.5rem);
   font-weight: 900;
   line-height: 0.95;
   letter-spacing: -0.01em;
@@ -330,13 +346,12 @@ pre code {
 .hero-title-accent {
   display: block;
   color: var(--lime);
-  -webkit-text-stroke: 1px var(--lime);
 }
 
 .hero-subtitle {
-  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-size: clamp(0.95rem, 1.8vw, 1.15rem);
   color: var(--white-soft);
-  max-width: 580px;
+  max-width: 560px;
   line-height: 1.7;
   margin-bottom: 32px;
   animation: fadeDown 0.6s ease 0.2s both;
@@ -391,6 +406,7 @@ pre code {
   cursor: pointer;
   transition: all var(--transition);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .btn-primary:hover {
@@ -413,6 +429,7 @@ pre code {
   cursor: pointer;
   transition: all var(--transition);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .btn-secondary:hover {
@@ -436,6 +453,7 @@ pre code {
   cursor: pointer;
   transition: all var(--transition);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .btn-ghost:hover {
@@ -445,6 +463,8 @@ pre code {
 
 .section {
   padding: 96px 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .section-alt {
@@ -489,7 +509,7 @@ pre code {
 
 .overview-grid {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: 1fr 340px;
   gap: 48px;
   align-items: start;
 }
@@ -516,6 +536,7 @@ pre code {
   background: var(--black-card);
   border: 1px solid var(--black-border);
   border-radius: var(--radius);
+  min-width: 0;
 }
 
 .info-card i {
@@ -529,6 +550,7 @@ pre code {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .info-label {
@@ -542,6 +564,9 @@ pre code {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--white-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-stack {
@@ -582,6 +607,7 @@ pre code {
   width: 1px;
   height: 40px;
   background: var(--black-border);
+  flex-shrink: 0;
 }
 
 .warning-box {
@@ -630,6 +656,7 @@ pre code {
   border-radius: var(--radius-lg);
   transition: all 0.25s ease;
   cursor: default;
+  min-width: 0;
 }
 
 .feature-card:hover {
@@ -651,6 +678,7 @@ pre code {
   color: var(--lime);
   font-size: 1.1rem;
   transition: all var(--transition);
+  flex-shrink: 0;
 }
 
 .feature-card:hover .feature-icon {
@@ -674,7 +702,6 @@ pre code {
 .install-steps {
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
 .install-step {
@@ -683,7 +710,6 @@ pre code {
   gap: 32px;
   padding: 40px 0;
   border-bottom: 1px solid var(--black-border);
-  position: relative;
 }
 
 .install-step:first-child {
@@ -702,6 +728,11 @@ pre code {
   line-height: 1;
   padding-top: 2px;
   letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+.step-content {
+  min-width: 0;
 }
 
 .step-content h3 {
@@ -734,6 +765,7 @@ pre code {
   border-radius: var(--radius);
   font-size: 0.875rem;
   color: var(--white-dim);
+  min-width: 0;
 }
 
 .req-item i {
@@ -745,6 +777,7 @@ pre code {
 
 .req-item span:nth-child(2) {
   flex: 1;
+  min-width: 0;
 }
 
 .req-badge {
@@ -757,6 +790,8 @@ pre code {
   color: var(--lime);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .req-badge.optional {
@@ -771,6 +806,7 @@ pre code {
   border-radius: var(--radius-lg);
   overflow: hidden;
   margin-bottom: 16px;
+  max-width: 100%;
 }
 
 .code-header {
@@ -817,10 +853,11 @@ pre code {
 }
 
 .code-block pre {
-  padding: 20px 20px;
+  padding: 20px;
   overflow-x: auto;
   font-size: 0.87rem;
   line-height: 1.7;
+  max-width: 100%;
 }
 
 .c-comment {
@@ -839,6 +876,7 @@ pre code {
 .step-note i {
   color: var(--lime);
   font-size: 0.8rem;
+  flex-shrink: 0;
 }
 
 .step-note code {
@@ -860,14 +898,15 @@ pre code {
 
 .success-box i {
   font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .cmd-tabs {
   display: flex;
-  gap: 4px;
+  gap: 0;
   margin-bottom: 20px;
   border-bottom: 1px solid var(--black-border);
-  padding-bottom: 1px;
+  overflow-x: auto;
 }
 
 .cmd-tab {
@@ -882,6 +921,7 @@ pre code {
   cursor: pointer;
   transition: all var(--transition);
   margin-bottom: -1px;
+  white-space: nowrap;
 }
 
 .cmd-tab:hover {
@@ -906,11 +946,12 @@ pre code {
   border: 1px solid var(--black-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  width: 100%;
 }
 
 .cmd-table-header {
   display: grid;
-  grid-template-columns: 140px 220px 1fr;
+  grid-template-columns: 130px 200px 1fr;
   gap: 16px;
   padding: 12px 20px;
   background: var(--black-soft);
@@ -924,12 +965,13 @@ pre code {
 
 .cmd-row {
   display: grid;
-  grid-template-columns: 140px 220px 1fr;
+  grid-template-columns: 130px 200px 1fr;
   gap: 16px;
   padding: 14px 20px;
   border-bottom: 1px solid rgba(28, 28, 28, 0.6);
   align-items: center;
   transition: background var(--transition);
+  min-width: 0;
 }
 
 .cmd-row:last-child {
@@ -942,17 +984,19 @@ pre code {
 
 .cmd-row code {
   font-size: 0.82rem;
+  word-break: break-all;
 }
 
 .cmd-row span {
   font-size: 0.85rem;
   color: var(--white-soft);
+  min-width: 0;
 }
 
 .arch-layout {
   display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 48px;
+  grid-template-columns: 1fr 320px;
+  gap: 40px;
   align-items: start;
 }
 
@@ -960,13 +1004,15 @@ pre code {
   background: var(--black-card);
   border: 1px solid var(--black-border);
   border-radius: var(--radius-lg);
-  padding: 28px;
+  padding: 24px;
   overflow: hidden;
+  min-width: 0;
 }
 
 .arch-svg {
   width: 100%;
   height: auto;
+  display: block;
 }
 
 .arch-details {
@@ -1029,17 +1075,19 @@ pre code {
   border: 1px solid var(--black-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  width: 100%;
 }
 
 .config-row {
   display: grid;
-  grid-template-columns: 200px 140px 1fr;
+  grid-template-columns: 180px 120px 1fr;
   gap: 16px;
   padding: 13px 20px;
   border-bottom: 1px solid rgba(28, 28, 28, 0.6);
   align-items: center;
   font-size: 0.85rem;
   transition: background var(--transition);
+  min-width: 0;
 }
 
 .config-row:last-child {
@@ -1062,13 +1110,14 @@ pre code {
 
 .config-row span {
   color: var(--white-soft);
+  min-width: 0;
 }
-
 
 .cta-section {
   padding: 80px 0;
   background: var(--black-mid);
   border-top: 1px solid var(--black-border);
+  overflow: hidden;
 }
 
 .cta-inner {
@@ -1121,6 +1170,7 @@ pre code {
   background: var(--black-mid);
   border-top: 1px solid var(--black-border);
   padding: 60px 0 32px;
+  overflow: hidden;
 }
 
 .footer-grid {
@@ -1132,10 +1182,8 @@ pre code {
 
 .footer-brand {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  grid-column: span 1;
   align-items: flex-start;
+  gap: 12px;
 }
 
 .footer-logo {
@@ -1229,14 +1277,8 @@ pre code {
 }
 
 @keyframes fadeDown {
-  from {
-    opacity: 0;
-    transform: translateY(-16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 1024px) {
@@ -1244,23 +1286,30 @@ pre code {
     grid-template-columns: 1fr;
     gap: 32px;
   }
+
   .overview-side {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
   }
+
   .stat-stack {
     margin-bottom: 0;
   }
+
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .arch-layout {
     grid-template-columns: 1fr;
   }
+
   .footer-grid {
     grid-template-columns: 1fr 1fr;
+    gap: 32px;
   }
+
   .footer-brand {
     grid-column: span 2;
   }
@@ -1270,85 +1319,116 @@ pre code {
   .nav-links {
     display: none;
   }
+
   .burger {
     display: flex;
   }
+
   .hero-content {
-    padding: 60px 24px;
+    padding: 48px 24px 64px;
   }
+
   .features-grid {
     grid-template-columns: 1fr;
   }
+
   .install-step {
     grid-template-columns: 1fr;
     gap: 12px;
   }
+
   .step-num {
-    font-size: 1.5rem;
-    color: rgba(74, 222, 128, 0.25);
+    font-size: 1.4rem;
   }
-  .cmd-table-header,
+
+  .cmd-table-header {
+    grid-template-columns: 110px 1fr;
+  }
+
+  .cmd-table-header span:nth-child(2) {
+    display: none;
+  }
+
   .cmd-row {
     grid-template-columns: 110px 1fr;
   }
-  .cmd-table-header span:nth-child(2),
+
   .cmd-row code:nth-child(2) {
     display: none;
   }
+
   .config-row {
-    grid-template-columns: 160px 100px 1fr;
+    grid-template-columns: 150px 90px 1fr;
     font-size: 0.8rem;
   }
-  .footer-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .footer-brand {
-    grid-column: span 2;
-  }
+
   .cta-inner {
     padding: 40px 24px;
   }
+
   .info-grid {
     grid-template-columns: 1fr;
   }
+
   .overview-side {
     grid-template-columns: 1fr;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
 @media (max-width: 480px) {
   .hero-title {
-    font-size: 3rem;
+    font-size: 2.8rem;
   }
-  .cmd-table-header,
+
+  .cmd-table-header {
+    grid-template-columns: 90px 1fr;
+  }
+
   .cmd-row {
-    grid-template-columns: 100px 1fr;
+    grid-template-columns: 90px 1fr;
   }
+
   .config-row {
-    grid-template-columns: 1fr 80px;
+    grid-template-columns: 140px 1fr;
   }
-  .config-row span {
+
+  .config-row span:last-child {
     display: none;
   }
+
   .footer-grid {
     grid-template-columns: 1fr;
   }
+
   .footer-brand {
     grid-column: span 1;
   }
+
   .footer-bottom {
     flex-direction: column;
     text-align: center;
   }
+
   .hero-actions {
     flex-direction: column;
   }
+
   .btn-primary,
   .btn-secondary {
     justify-content: center;
+    width: 100%;
   }
+
   .cta-actions {
     flex-direction: column;
     align-items: center;
+  }
+
+  .section {
+    padding: 64px 0;
   }
 }
