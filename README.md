@@ -82,7 +82,7 @@ cd TOMCAT-C2-Framework
 java -jar output/tomcat-c2.jar
 ```
 
-[![Download JAR](https://img.shields.io/badge/Download%20Latest%20JAR-000000?style=for-the-badge&logo=electron&logoColor=07ff18&labelColor=000000&color=03001a)](https://raw.githubusercontent.com/MatrixTM26/TOMCAT-C2-Framework/dev/output/tomcat-c2.jar)
+[![Download JAR](https://img.shields.io/badge/Download%20Latest%20JAR-000000?style=for-the-badge&logo=electron&logoColor=07ff18&labelColor=000000&color=03001a)](https://github.com/MatrixTM26/TOMCAT-C2-Framework/releases/latest/download/tomcat-c2.jar)
 
 #### Manual compile
 
