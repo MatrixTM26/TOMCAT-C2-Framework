@@ -1,6 +1,7 @@
 package com.tomcat.core.crypto;
 
 import com.tomcat.core.output.Logger;
+import com.tomcat.utils.ServerConfig;
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.file.*;
@@ -18,273 +19,307 @@ import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
-public class CertificateManager {
+public final class CertificateManager {
 
-    private static final String KeystoreType = "PKCS12";
     private static final String SignAlgorithm = "SHA256WithRSAEncryption";
-    private static final int KeySize = 2048;
+    private static final int CaKeySize = 4096;
+    private static final int LeafKeySize = 2048;
 
-    private final String CertsDir;
-    private final String ServerKeystorePath;
-    private final String TruststorePath;
-    private final String KeystorePassword;
-    private final Map<String, Map<String, String>> AgentMetadata = new HashMap<>();
+    private final ServerConfig Config;
 
-    private KeyStore ServerKeystore;
-    private KeyStore Truststore;
     private PrivateKey CaPrivateKey;
     private X509Certificate CaCertificate;
     private X500Name CaX500Name;
 
-    public CertificateManager(String CertsDir, String KeystorePassword) {
-        this.CertsDir = CertsDir;
-        this.KeystorePassword = KeystorePassword;
-        this.ServerKeystorePath = CertsDir + "/server.p12";
-        this.TruststorePath = CertsDir + "/truststore.p12";
-        CreateDirectories();
+    public CertificateManager(ServerConfig Config) {
+        this.Config = Config;
+        EnsureDirs();
     }
 
-    private void CreateDirectories() {
+    private void EnsureDirs() {
         try {
-            Files.createDirectories(Paths.get(CertsDir));
-            Files.createDirectories(Paths.get(CertsDir + "/agents"));
+            Files.createDirectories(Paths.get(Config.GetAgentCertDir()));
+            Files.createDirectories(Paths.get(Config.GetKeystorePath()).getParent());
         } catch (IOException E) {
-            Logger.ErrorMsg("Failed to create certificate directories: " + E.getMessage());
+            Logger.Warn("Could not create cert directories: " + E.getMessage());
         }
     }
 
     public void Initialize(String ServerHost) throws Exception {
-        Logger.Messages("Initializing MTLS Certificate Infrastructure");
-        CreateCa();
-        CreateServerCertificate(ServerHost);
-        Logger.Messages("Certificate Infrastructure Ready");
+        Logger.Info("Initializing certificate infrastructure");
+        LoadOrCreateCa();
+        LoadOrCreateServerCert(ServerHost);
+        Logger.Success("Certificate infrastructure ready");
     }
 
-    public void CreateCa() throws Exception {
-        String CaPath = CertsDir + "/ca.p12";
-        if (Files.exists(Paths.get(CaPath))) {
-            Logger.Messages("Loading Existing CA");
-            KeyStore CaKs = KeyStore.getInstance(KeystoreType);
-            try (InputStream In = new FileInputStream(CaPath)) {
-                CaKs.load(In, KeystorePassword.toCharArray());
-            }
-            CaPrivateKey = (PrivateKey) CaKs.getKey("ca", KeystorePassword.toCharArray());
-            CaCertificate = (X509Certificate) CaKs.getCertificate("ca");
-            CaX500Name = X500Name.getInstance(
-                org.bouncycastle.asn1.ASN1Sequence.fromByteArray(CaCertificate.getSubjectX500Principal().getEncoded())
-            );
-            return;
-        }
-
-        Logger.Messages("Generating Certificate Authority");
-        KeyPairGenerator Kpg = KeyPairGenerator.getInstance("RSA");
-        Kpg.initialize(4096);
-        KeyPair CaPair = Kpg.generateKeyPair();
-        CaPrivateKey = CaPair.getPrivate();
-
-        CaX500Name = new X500Name(
-            "C=US,ST=Cybertron,L=DarkNet,O=TOMCAT C2 Frameworks V2,OU=ManInTheMatrix,CN=TOMCAT C2 Root CA"
+    public SSLContext BuildSslContext(boolean NeedClientAuth) throws Exception {
+        SSLContext Ctx = KeystoreLoader.BuildSslContext(
+            Config.GetKeystorePath(),
+            Config.GetKeystoreType(),
+            Config.GetKeystorePassword(),
+            Config.GetTruststorePath(),
+            Config.GetTruststoreType(),
+            Config.GetTruststorePassword(),
+            Config.GetTlsProtocol(),
+            NeedClientAuth
         );
-
-        Date NotBefore = new Date();
-        Date NotAfter = Date.from(Instant.now().plus(Duration.ofDays(3650)));
-        BigInteger Serial = BigInteger.valueOf(new SecureRandom().nextLong()).abs();
-
-        X509v3CertificateBuilder Builder = new JcaX509v3CertificateBuilder(
-            CaX500Name,
-            Serial,
-            NotBefore,
-            NotAfter,
-            CaX500Name,
-            CaPair.getPublic()
-        );
-        Builder.addExtension(Extension.basicConstraints, true, new BasicConstraints(true));
-        Builder.addExtension(
-            Extension.keyUsage,
-            true,
-            new KeyUsage(KeyUsage.keyCertSign | KeyUsage.cRLSign | KeyUsage.digitalSignature)
-        );
-
-        ContentSigner Signer = new JcaContentSignerBuilder(SignAlgorithm).build(CaPrivateKey);
-        CaCertificate = new JcaX509CertificateConverter().getCertificate(Builder.build(Signer));
-
-        KeyStore CaKs = KeyStore.getInstance(KeystoreType);
-        CaKs.load(null, null);
-        CaKs.setKeyEntry("ca", CaPrivateKey, KeystorePassword.toCharArray(), new X509Certificate[] { CaCertificate });
-        try (OutputStream Out = new FileOutputStream(CaPath)) {
-            CaKs.store(Out, KeystorePassword.toCharArray());
-        }
-
-        AddToTruststore(CaCertificate, "ca");
-        Logger.Messages("CA Created Successfully");
-    }
-
-    public void CreateServerCertificate(String ServerHost) throws Exception {
-        if (Files.exists(Paths.get(ServerKeystorePath))) {
-            Logger.Messages("Loading Existing Server Certificate");
-            ServerKeystore = KeyStore.getInstance(KeystoreType);
-            try (InputStream In = new FileInputStream(ServerKeystorePath)) {
-                ServerKeystore.load(In, KeystorePassword.toCharArray());
-            }
-            return;
-        }
-
-        Logger.Messages("Generating Server Certificate");
-        KeyPairGenerator Kpg = KeyPairGenerator.getInstance("RSA");
-        Kpg.initialize(KeySize);
-        KeyPair Pair = Kpg.generateKeyPair();
-
-        X500Name Subject = new X500Name(
-            "C=US,ST=Cybertron,L=DarkNet,O=TOMCAT C2 Frameworks,OU=ManInTheMatrix,CN=TOMCAT C2 Server"
-        );
-        Date NotBefore = new Date();
-        Date NotAfter = Date.from(Instant.now().plus(Duration.ofDays(365)));
-        BigInteger Serial = BigInteger.valueOf(new SecureRandom().nextLong()).abs();
-
-        X509v3CertificateBuilder Builder = new JcaX509v3CertificateBuilder(
-            CaX500Name,
-            Serial,
-            NotBefore,
-            NotAfter,
-            Subject,
-            Pair.getPublic()
-        );
-        Builder.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
-        Builder.addExtension(
-            Extension.keyUsage,
-            true,
-            new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment)
-        );
-        Builder.addExtension(Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
-
-        GeneralNamesBuilder SanBuilder = new GeneralNamesBuilder();
-        SanBuilder.addName(new GeneralName(GeneralName.dNSName, "localhost"));
-        if (!ServerHost.equals("0.0.0.0")) {
-            SanBuilder.addName(new GeneralName(GeneralName.iPAddress, ServerHost));
-        }
-        Builder.addExtension(Extension.subjectAlternativeName, false, SanBuilder.build());
-
-        ContentSigner Signer = new JcaContentSignerBuilder(SignAlgorithm).build(CaPrivateKey);
-        X509Certificate Cert = new JcaX509CertificateConverter().getCertificate(Builder.build(Signer));
-
-        Cert.verify(CaCertificate.getPublicKey());
-
-        ServerKeystore = KeyStore.getInstance(KeystoreType);
-        ServerKeystore.load(null, null);
-        ServerKeystore.setKeyEntry(
-            "server",
-            Pair.getPrivate(),
-            KeystorePassword.toCharArray(),
-            new X509Certificate[] { Cert, CaCertificate }
-        );
-        try (OutputStream Out = new FileOutputStream(ServerKeystorePath)) {
-            ServerKeystore.store(Out, KeystorePassword.toCharArray());
-        }
-        Logger.Messages("Server Certificate Created Successfully");
-    }
-
-    public String CreateAgentCertificate(String AgentId, boolean UseRawName, int ValidDays) throws Exception {
-        String AgentName = UseRawName ? AgentId : "Agent-" + AgentId;
-        String AgentPath = CertsDir + "/agents/" + AgentName + ".p12";
-
-        if (Files.exists(Paths.get(AgentPath))) {
-            Logger.Messages("Agent Certificate Already Exists: " + AgentName);
-            return AgentPath;
-        }
-
-        Logger.Messages("Generating Agent Certificate: " + AgentName);
-        KeyPairGenerator Kpg = KeyPairGenerator.getInstance("RSA");
-        Kpg.initialize(KeySize);
-        KeyPair Pair = Kpg.generateKeyPair();
-
-        X500Name Subject = new X500Name(
-            "C=US,ST=Cybertron,L=DarkNet,O=TOMCAT C2 Frameworks,OU=C2Agents,CN=" + AgentName
-        );
-        Date NotBefore = new Date();
-        Date NotAfter = Date.from(Instant.now().plus(Duration.ofDays(ValidDays)));
-        BigInteger Serial = BigInteger.valueOf(new SecureRandom().nextLong()).abs();
-
-        X509v3CertificateBuilder Builder = new JcaX509v3CertificateBuilder(
-            CaX500Name,
-            Serial,
-            NotBefore,
-            NotAfter,
-            Subject,
-            Pair.getPublic()
-        );
-        Builder.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
-        Builder.addExtension(
-            Extension.keyUsage,
-            true,
-            new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment)
-        );
-        Builder.addExtension(Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_clientAuth));
-
-        ContentSigner Signer = new JcaContentSignerBuilder(SignAlgorithm).build(CaPrivateKey);
-        X509Certificate Cert = new JcaX509CertificateConverter().getCertificate(Builder.build(Signer));
-
-        Cert.verify(CaCertificate.getPublicKey());
-
-        KeyStore AgentKs = KeyStore.getInstance(KeystoreType);
-        AgentKs.load(null, null);
-        AgentKs.setKeyEntry(
-            "agent",
-            Pair.getPrivate(),
-            KeystorePassword.toCharArray(),
-            new X509Certificate[] { Cert, CaCertificate }
-        );
-        try (OutputStream Out = new FileOutputStream(AgentPath)) {
-            AgentKs.store(Out, KeystorePassword.toCharArray());
-        }
-
-        Map<String, String> Meta = new HashMap<>();
-        Meta.put("Created", new Date().toString());
-        Meta.put("ValidDays", String.valueOf(ValidDays));
-        Meta.put("Path", AgentPath);
-        AgentMetadata.put(AgentName, Meta);
-
-        AddToTruststore(Cert, AgentName);
-        Logger.Messages("Agent Certificate Created: " + AgentName);
-        return AgentPath;
-    }
-
-    private void AddToTruststore(X509Certificate Cert, String Alias) throws Exception {
-        KeyStore Ts;
-        if (Files.exists(Paths.get(TruststorePath))) {
-            Ts = KeyStore.getInstance(KeystoreType);
-            try (InputStream In = new FileInputStream(TruststorePath)) {
-                Ts.load(In, KeystorePassword.toCharArray());
-            }
-        } else {
-            Ts = KeyStore.getInstance(KeystoreType);
-            Ts.load(null, null);
-        }
-        Ts.setCertificateEntry(Alias, Cert);
-        try (OutputStream Out = new FileOutputStream(TruststorePath)) {
-            Ts.store(Out, KeystorePassword.toCharArray());
-        }
-        Truststore = Ts;
-    }
-
-    public SSLContext CreateServerSslContext() throws Exception {
-        KeyManagerFactory Kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        Kmf.init(ServerKeystore, KeystorePassword.toCharArray());
-
-        TrustManagerFactory Tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        Tmf.init(Truststore);
-
-        SSLContext Ctx = SSLContext.getInstance("TLSv1.3");
-        Ctx.init(Kmf.getKeyManagers(), Tmf.getTrustManagers(), new SecureRandom());
+        Logger.Verbose("SSLContext built — clientAuth=" + NeedClientAuth);
         return Ctx;
     }
 
-    public Map<String, Map<String, String>> ListAgents() {
-        return Collections.unmodifiableMap(AgentMetadata);
+    private void LoadOrCreateCa() throws Exception {
+        String CaPath = Config.GetCaPath();
+        String CaType = Config.GetCaType();
+        String CaPass = Config.GetCaPassword();
+
+        if (Files.exists(Paths.get(CaPath))) {
+            Logger.Info("Loading existing CA: " + CaPath);
+            try {
+                KeyStore CaKs = KeystoreLoader.Load(CaPath, CaType, CaPass);
+                String Alias = CaKs.aliases().nextElement();
+                CaPrivateKey = (PrivateKey) CaKs.getKey(Alias, CaPass.toCharArray());
+                CaCertificate = (X509Certificate) CaKs.getCertificate(Alias);
+                CaX500Name = X500Name.getInstance(
+                    org.bouncycastle.asn1.ASN1Sequence.fromByteArray(
+                        CaCertificate.getSubjectX500Principal().getEncoded()
+                    )
+                );
+                Logger.Verbose("CA loaded — CN=" + CaCertificate.getSubjectX500Principal());
+            } catch (Exception E) {
+                throw new Exception("Failed to load CA from [" + CaPath + "]: " + E.getMessage(), E);
+            }
+            return;
+        }
+
+        Logger.Info("Generating new Certificate Authority");
+        try {
+            KeyPairGenerator Kpg = KeyPairGenerator.getInstance("RSA");
+            Kpg.initialize(CaKeySize);
+            KeyPair Pair = Kpg.generateKeyPair();
+            CaPrivateKey = Pair.getPrivate();
+
+            CaX500Name = BuildDn(
+                Config.GetCaDnCn(),
+                Config.GetCaDnO(),
+                Config.GetCaDnOu(),
+                Config.GetCaDnL(),
+                Config.GetCaDnSt(),
+                Config.GetCaDnC()
+            );
+
+            Date NotBefore = new Date();
+            Date NotAfter = Date.from(Instant.now().plus(Duration.ofDays(Config.GetCaValidityDays())));
+            BigInteger Serial = BigInteger.valueOf(new SecureRandom().nextLong()).abs();
+
+            X509v3CertificateBuilder Builder = new JcaX509v3CertificateBuilder(
+                CaX500Name,
+                Serial,
+                NotBefore,
+                NotAfter,
+                CaX500Name,
+                Pair.getPublic()
+            );
+            Builder.addExtension(Extension.basicConstraints, true, new BasicConstraints(true));
+            Builder.addExtension(
+                Extension.keyUsage,
+                true,
+                new KeyUsage(KeyUsage.keyCertSign | KeyUsage.cRLSign | KeyUsage.digitalSignature)
+            );
+
+            ContentSigner Signer = new JcaContentSignerBuilder(SignAlgorithm).build(CaPrivateKey);
+            CaCertificate = new JcaX509CertificateConverter().getCertificate(Builder.build(Signer));
+
+            SaveKeystore(CaPath, "PKCS12", CaPass, "ca", CaPrivateKey, new X509Certificate[] { CaCertificate });
+            AddToTruststore(CaCertificate, "ca");
+            Logger.Success("CA created — " + CaX500Name);
+        } catch (Exception E) {
+            throw new Exception("CA generation failed: " + E.getMessage(), E);
+        }
     }
 
-    public void RevokeAgent(String AgentName) throws Exception {
-        Files.deleteIfExists(Paths.get(CertsDir + "/agents/" + AgentName + ".p12"));
-        AgentMetadata.remove(AgentName);
-        Logger.Messages("Agent Certificate Revoked: " + AgentName);
+    private void LoadOrCreateServerCert(String ServerHost) throws Exception {
+        String KsPath = Config.GetKeystorePath();
+        String KsType = Config.GetKeystoreType();
+        String KsPass = Config.GetKeystorePassword();
+
+        if (Files.exists(Paths.get(KsPath))) {
+            Logger.Info("Loading existing server certificate: " + KsPath);
+            try {
+                KeystoreLoader.Load(KsPath, KsType, KsPass);
+                Logger.Verbose("Server keystore loaded from " + KsPath);
+            } catch (Exception E) {
+                throw new Exception("Failed to load server keystore [" + KsPath + "]: " + E.getMessage(), E);
+            }
+            return;
+        }
+
+        Logger.Info("Generating server certificate");
+        try {
+            KeyPairGenerator Kpg = KeyPairGenerator.getInstance("RSA");
+            Kpg.initialize(LeafKeySize);
+            KeyPair Pair = Kpg.generateKeyPair();
+
+            X500Name Subject = BuildDn(
+                Config.GetDnCn(),
+                Config.GetDnO(),
+                Config.GetDnOu(),
+                Config.GetDnL(),
+                Config.GetDnSt(),
+                Config.GetDnC()
+            );
+
+            Date NotBefore = new Date();
+            Date NotAfter = Date.from(Instant.now().plus(Duration.ofDays(Config.GetServerValidityDays())));
+            BigInteger Serial = BigInteger.valueOf(new SecureRandom().nextLong()).abs();
+
+            X509v3CertificateBuilder Builder = new JcaX509v3CertificateBuilder(
+                CaX500Name,
+                Serial,
+                NotBefore,
+                NotAfter,
+                Subject,
+                Pair.getPublic()
+            );
+            Builder.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
+            Builder.addExtension(
+                Extension.keyUsage,
+                true,
+                new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment)
+            );
+            Builder.addExtension(Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
+
+            GeneralNamesBuilder SanBuilder = new GeneralNamesBuilder();
+            SanBuilder.addName(new GeneralName(GeneralName.dNSName, "localhost"));
+            if (!ServerHost.equals("0.0.0.0")) {
+                SanBuilder.addName(new GeneralName(GeneralName.iPAddress, ServerHost));
+            }
+            Builder.addExtension(Extension.subjectAlternativeName, false, SanBuilder.build());
+
+            ContentSigner Signer = new JcaContentSignerBuilder(SignAlgorithm).build(CaPrivateKey);
+            X509Certificate Cert = new JcaX509CertificateConverter().getCertificate(Builder.build(Signer));
+            Cert.verify(CaCertificate.getPublicKey());
+
+            SaveKeystore(
+                KsPath,
+                "PKCS12",
+                KsPass,
+                "server",
+                Pair.getPrivate(),
+                new X509Certificate[] { Cert, CaCertificate }
+            );
+            Logger.Success("Server certificate created — " + Subject);
+        } catch (Exception E) {
+            throw new Exception("Server cert generation failed: " + E.getMessage(), E);
+        }
+    }
+
+    public String CreateAgentCertificate(String AgentId) throws Exception {
+        String AgentName = "Agent-" + AgentId;
+        String AgentPath = Config.GetAgentCertDir() + "/" + AgentName + ".p12";
+
+        if (Files.exists(Paths.get(AgentPath))) {
+            Logger.Info("Agent cert already exists: " + AgentName);
+            return AgentPath;
+        }
+
+        Logger.Info("Generating agent certificate: " + AgentName);
+        try {
+            KeyPairGenerator Kpg = KeyPairGenerator.getInstance("RSA");
+            Kpg.initialize(LeafKeySize);
+            KeyPair Pair = Kpg.generateKeyPair();
+
+            X500Name Subject = BuildDn(
+                AgentName,
+                Config.GetDnO(),
+                "C2Agents",
+                Config.GetDnL(),
+                Config.GetDnSt(),
+                Config.GetDnC()
+            );
+
+            Date NotBefore = new Date();
+            Date NotAfter = Date.from(Instant.now().plus(Duration.ofDays(Config.GetAgentValidityDays())));
+            BigInteger Serial = BigInteger.valueOf(new SecureRandom().nextLong()).abs();
+
+            X509v3CertificateBuilder Builder = new JcaX509v3CertificateBuilder(
+                CaX500Name,
+                Serial,
+                NotBefore,
+                NotAfter,
+                Subject,
+                Pair.getPublic()
+            );
+            Builder.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
+            Builder.addExtension(
+                Extension.keyUsage,
+                true,
+                new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment)
+            );
+            Builder.addExtension(Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_clientAuth));
+
+            ContentSigner Signer = new JcaContentSignerBuilder(SignAlgorithm).build(CaPrivateKey);
+            X509Certificate Cert = new JcaX509CertificateConverter().getCertificate(Builder.build(Signer));
+            Cert.verify(CaCertificate.getPublicKey());
+
+            SaveKeystore(
+                AgentPath,
+                "PKCS12",
+                Config.GetKeystorePassword(),
+                "agent",
+                Pair.getPrivate(),
+                new X509Certificate[] { Cert, CaCertificate }
+            );
+            AddToTruststore(Cert, AgentName);
+            Logger.Success("Agent cert created: " + AgentPath);
+            return AgentPath;
+        } catch (Exception E) {
+            throw new Exception("Agent cert generation failed [" + AgentId + "]: " + E.getMessage(), E);
+        }
+    }
+
+    public void RevokeAgentCertificate(String AgentName) throws Exception {
+        String Path = Config.GetAgentCertDir() + "/" + AgentName + ".p12";
+        boolean Deleted = Files.deleteIfExists(Paths.get(Path));
+        if (Deleted) Logger.Info("Agent cert revoked: " + AgentName);
+        else Logger.Warn("Agent cert not found for revocation: " + AgentName);
+    }
+
+    private void AddToTruststore(X509Certificate Cert, String Alias) throws Exception {
+        String TsPath = Config.GetTruststorePath();
+        String TsPass = Config.GetTruststorePassword();
+        KeyStore Ts;
+        if (Files.exists(Paths.get(TsPath))) {
+            Ts = KeystoreLoader.Load(TsPath, Config.GetTruststoreType(), TsPass);
+        } else {
+            Ts = KeyStore.getInstance("PKCS12");
+            Ts.load(null, null);
+        }
+        Ts.setCertificateEntry(Alias, Cert);
+        try (OutputStream Out = new FileOutputStream(TsPath)) {
+            Ts.store(Out, TsPass.toCharArray());
+        }
+        Logger.Verbose("Added to truststore: " + Alias);
+    }
+
+    private void SaveKeystore(
+        String Path,
+        String Type,
+        String Password,
+        String Alias,
+        PrivateKey Key,
+        X509Certificate[] Chain
+    ) throws Exception {
+        Files.createDirectories(Paths.get(Path).getParent());
+        KeyStore Ks = KeyStore.getInstance(Type);
+        Ks.load(null, null);
+        Ks.setKeyEntry(Alias, Key, Password.toCharArray(), Chain);
+        try (OutputStream Out = new FileOutputStream(Path)) {
+            Ks.store(Out, Password.toCharArray());
+        }
+        Logger.Verbose("Keystore saved: " + Path);
+    }
+
+    private X500Name BuildDn(String Cn, String O, String Ou, String L, String St, String C) {
+        return new X500Name("CN=" + Cn + ",O=" + O + ",OU=" + Ou + ",L=" + L + ",ST=" + St + ",C=" + C);
     }
 }

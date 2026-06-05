@@ -3,6 +3,7 @@ package com.tomcat.iface;
 import com.tomcat.core.event.EventManager;
 import com.tomcat.core.event.EventManager.EventType;
 import com.tomcat.core.output.Logger;
+import com.tomcat.core.server.ListenerMode;
 import com.tomcat.core.server.TomcatServer;
 import com.tomcat.core.session.Session;
 import com.tomcat.iface.banner.AUTHBanner;
@@ -27,7 +28,7 @@ public class CLI {
     private final int MaxLogs;
     private volatile boolean Running = true;
     private int CurrentSession = -1;
-    private boolean ActiveMtls = false;
+    private ListenerMode ActiveMode = ListenerMode.MULTI;
 
     public CLI(ServerConfig Config) {
         this.Config = Config;
@@ -156,7 +157,7 @@ public class CLI {
         System.out.printf("  %sStatus    %s● ONLINE%n", AnsiColor.Red, AnsiColor.Green);
         System.out.printf("  %sUptime    %s%s%n", AnsiColor.Red, AnsiColor.White, SystemHelper.FormatUptime(Elapsed));
         System.out.printf("  %sSessions  %s%d%n", AnsiColor.Red, AnsiColor.White, Server.GetSessions().Count());
-        System.out.printf("  %sMTLS      %s%s%n", AnsiColor.Red, AnsiColor.White, ActiveMtls ? "Enabled" : "Disabled");
+        System.out.printf("  %sMTLS      %s%s%n", AnsiColor.Red, AnsiColor.White, ActiveMode.name());
         System.out.println();
     }
 
@@ -326,8 +327,8 @@ public class CLI {
         }
     }
 
-    private boolean StartServer(String Host, int Port, boolean UseMtls, boolean Meterpreter) {
-        Server = new TomcatServer(Host, Port, UseMtls, Config);
+    private boolean StartServer(String Host, int Port, ListenerMode Mode) {
+        Server = new TomcatServer(Host, Port, Mode, Config);
         Server.AddEventListener(this::ServerEventHandler);
         boolean[] Result = Server.StartServer();
         if (!Result[0]) {
@@ -446,9 +447,9 @@ public class CLI {
         EndBanner.EndLogo();
     }
 
-    public void Run(String Host, int Port, boolean UseMtls, boolean Meterpreter) {
-        this.ActiveMtls = UseMtls;
-        if (!StartServer(Host, Port, UseMtls, Meterpreter)) return;
+    public void Run(String Host, int Port, ListenerMode Mode) {
+        this.ActiveMode = Mode;
+        if (!StartServer(Host, Port, Mode)) return;
         try {
             Thread.sleep(500);
         } catch (InterruptedException Ignored) {}

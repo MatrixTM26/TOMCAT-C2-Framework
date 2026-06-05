@@ -5,6 +5,7 @@ import com.sun.net.httpserver.*;
 import com.tomcat.core.event.EventManager;
 import com.tomcat.core.event.EventManager.EventType;
 import com.tomcat.core.output.Logger;
+import com.tomcat.core.server.ListenerMode;
 import com.tomcat.core.server.TomcatServer;
 import com.tomcat.core.session.Session;
 import com.tomcat.utils.ServerConfig;
@@ -19,7 +20,8 @@ import java.util.concurrent.*;
 public class WebApp {
 
     private final ServerConfig Config;
-    private final boolean UseMtls;
+    private final boolean ActiveMode.RequiresTls();
+    private ListenerMode ActiveMode;
     private TomcatServer Server;
     private HttpServer HttpSrv;
     private Instant ServerStartTime;
@@ -28,9 +30,9 @@ public class WebApp {
     private final Gson GsonInst = new Gson();
     private final Path BaseDir;
 
-    public WebApp(ServerConfig Config, boolean UseMtls) {
+    public WebApp(ServerConfig Config, ListenerMode Mode) {
         this.Config = Config;
-        this.UseMtls = UseMtls;
+        this.ActiveMode = Mode;
         this.MaxLogs = Config.GetMaxLogEntries();
         this.BaseDir = ResolveBaseDir();
     }
@@ -133,10 +135,10 @@ public class WebApp {
             Resp.put("Uptime", GetUptime());
             Resp.put("Agents", Server.GetSessions().Count());
             Resp.put("Key", Server.GetCrypto().GetKeyAsBase64Url());
-            Resp.put("MtlsEnabled", UseMtls);
+            Resp.put("MtlsEnabled", ActiveMode.RequiresTls());
             return GsonInst.toJson(Resp);
         }
-        return GsonInst.toJson(Map.of("Status", "Offline", "Agents", 0, "MtlsEnabled", UseMtls));
+        return GsonInst.toJson(Map.of("Status", "Offline", "Agents", 0, "MtlsEnabled", ActiveMode.RequiresTls()));
     }
 
     private String ApiServerStart(HttpExchange E) throws Exception {
@@ -146,8 +148,7 @@ public class WebApp {
         Map<String, Object> Body = ParseBody(E);
         String Host = Body.getOrDefault("Host", Config.GetServerHost()).toString();
         int Port = (int) Double.parseDouble(Body.getOrDefault("Port", Config.GetServerPort()).toString());
-        boolean Mtls = this.UseMtls;
-        Server = new TomcatServer(Host, Port, Mtls, Config);
+        Server = new TomcatServer(Host, Port, this.ActiveMode, Config);
         Server.AddEventListener(this::EventHandler);
         boolean[] Result = Server.StartServer();
         if (!Result[0]) {
