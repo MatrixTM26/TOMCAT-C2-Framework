@@ -10,12 +10,22 @@ import java.util.stream.Collectors;
 public final class MemoryDatabase extends TeamDatabase {
 
     private static final DateTimeFormatter Fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final int MaxEntries = 5000;
 
     private final List<String> LogEntries = new CopyOnWriteArrayList<>();
     private final List<Map<String, Object>> CommandLogs = new CopyOnWriteArrayList<>();
     private final List<Map<String, Object>> SessionEvents = new CopyOnWriteArrayList<>();
     private final ConcurrentHashMap<Integer, String> AgentNotes = new ConcurrentHashMap<>();
-    private static final int MaxEntries = 5000;
+    private final ConcurrentHashMap<String, Map<String, Object>> Operators = new ConcurrentHashMap<>();
+
+    public MemoryDatabase() {
+        Map<String, Object> DefaultAdmin = new LinkedHashMap<>();
+        DefaultAdmin.put("Username", "admin");
+        DefaultAdmin.put("PasswordHash", HashPassword("admin"));
+        DefaultAdmin.put("Role", OperatorRole.ADMIN.name());
+        DefaultAdmin.put("CreatedAt", LocalDateTime.now().format(Fmt));
+        Operators.put("admin", DefaultAdmin);
+    }
 
     @Override
     public boolean IsConnected() {
@@ -68,15 +78,6 @@ public final class MemoryDatabase extends TeamDatabase {
     }
 
     @Override
-    public List<Map<String, Object>> GetOperators() {
-        return CommandLogs.stream()
-            .map(R -> R.get("Operator").toString())
-            .distinct()
-            .map(Op -> Map.of("Name", (Object) Op))
-            .collect(Collectors.toList());
-    }
-
-    @Override
     public void SetAgentNote(int AgentId, String Note) {
         AgentNotes.put(AgentId, Note);
     }
@@ -84,6 +85,58 @@ public final class MemoryDatabase extends TeamDatabase {
     @Override
     public String GetAgentNote(int AgentId) {
         return AgentNotes.getOrDefault(AgentId, "");
+    }
+
+    @Override
+    public boolean CreateOperator(String Username, String PasswordHash, OperatorRole Role) {
+        if (Operators.containsKey(Username)) return false;
+        Map<String, Object> Op = new LinkedHashMap<>();
+        Op.put("Username", Username);
+        Op.put("PasswordHash", PasswordHash);
+        Op.put("Role", Role.name());
+        Op.put("CreatedAt", LocalDateTime.now().format(Fmt));
+        Operators.put(Username, Op);
+        return true;
+    }
+
+    @Override
+    public boolean ValidateOperator(String Username, String PasswordHash) {
+        Map<String, Object> Op = Operators.get(Username);
+        if (Op == null) return false;
+        return PasswordHash.equals(Op.get("PasswordHash").toString());
+    }
+
+    @Override
+    public OperatorRole GetOperatorRole(String Username) {
+        Map<String, Object> Op = Operators.get(Username);
+        if (Op == null) return OperatorRole.VIEWER;
+        return OperatorRole.FromString(Op.get("Role").toString());
+    }
+
+    @Override
+    public List<Map<String, Object>> GetOperators() {
+        return Operators.values()
+            .stream()
+            .map(Op -> {
+                Map<String, Object> Safe = new LinkedHashMap<>(Op);
+                Safe.remove("PasswordHash");
+                return Safe;
+            })
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean UpdateOperatorRole(String Username, OperatorRole Role) {
+        Map<String, Object> Op = Operators.get(Username);
+        if (Op == null) return false;
+        Op.put("Role", Role.name());
+        return true;
+    }
+
+    @Override
+    public boolean DeleteOperator(String Username) {
+        if (Username.equals("admin")) return false;
+        return Operators.remove(Username) != null;
     }
 
     @Override

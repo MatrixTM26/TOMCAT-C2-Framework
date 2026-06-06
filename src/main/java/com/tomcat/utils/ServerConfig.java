@@ -69,6 +69,7 @@ public final class ServerConfig {
         set("db.user", "tomcat");
         set("db.password", "tomcat");
         set("mode.interface", "web");
+        set("teamserver.port", "5001");
     }
 
     private void set(String Key, String Value) {
@@ -316,5 +317,9 @@ public final class ServerConfig {
 
     public String GetDbPassword() {
         return str("db.password");
+    }
+
+    public int GetTeamServerPort() {
+        return num("teamserver.port");
     }
 }

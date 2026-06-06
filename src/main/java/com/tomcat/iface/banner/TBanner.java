@@ -35,7 +35,7 @@ public final class TBanner {
             "          |    |   /    |    \\/    Y    \\     \\____/    |    \\    |    \\     \\____/       \\\n" +
             "          |____|   \\_______  /\\____|__  /\\______  /\\____|__  /____|     \\______  /\\_______ \\\n" +
             "                           \\/         \\/        \\/         \\/                  \\/         \\/\n" +
-            "                                            Framework V2.0 (Java)\n" +
+            "                                                Framework V3.0\n" +
             AnsiColor.White +
             Msg +
             AnsiColor.Reset +

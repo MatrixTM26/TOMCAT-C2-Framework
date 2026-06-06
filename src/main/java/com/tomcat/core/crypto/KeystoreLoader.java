@@ -5,20 +5,10 @@ import java.io.*;
 import java.nio.file.*;
 import java.security.*;
 import java.security.cert.*;
-import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.*;
 import java.util.*;
 import javax.net.ssl.*;
 
-/**
- * KeystoreLoader — loads SSL keystores / truststores from multiple formats.
- *
- * Supported types (set via cert.*.type in server.properties):
- *   PKCS12  → .p12 / .pfx
- *   JKS     → .jks
- *   PEM     → .pem (cert + private key in same file or separate)
- *   CRT     → .crt / .cer (certificate only, no private key — truststore use)
- *   AUTO    → detect by file extension
- */
 public final class KeystoreLoader {
 
     private static final String Pkcs12Type = "PKCS12";
@@ -53,43 +43,40 @@ public final class KeystoreLoader {
         KeyStore Ts = Load(TrustPath, TrustType, TrustPass);
 
         KeyManagerFactory Kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        Kmf.init(Ks, KeyPass.toCharArray());
+        Kmf.init(Ks, KeyPass == null ? null : KeyPass.toCharArray());
 
         TrustManagerFactory Tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         Tmf.init(Ts);
 
         SSLContext Ctx = SSLContext.getInstance(TlsProtocol);
         Ctx.init(Kmf.getKeyManagers(), Tmf.getTrustManagers(), new SecureRandom());
-
         Logger.Verbose("SSLContext built — protocol=" + TlsProtocol + " clientAuth=" + NeedClientAuth);
         return Ctx;
     }
 
     public static String ResolveType(String Path, String TypeHint) {
-        if (TypeHint == null || TypeHint.isBlank() || TypeHint.equalsIgnoreCase("AUTO")) {
-            return DetectByExtension(Path);
-        }
+        if (TypeHint == null || TypeHint.isBlank() || TypeHint.equalsIgnoreCase("AUTO")) return DetectByExtension(Path);
         return TypeHint.toUpperCase();
     }
 
     private static String DetectByExtension(String Path) {
-        String Lower = Path.toLowerCase();
-        if (Lower.endsWith(".p12") || Lower.endsWith(".pfx")) return Pkcs12Type;
-        if (Lower.endsWith(".jks")) return JksType;
-        if (Lower.endsWith(".pem")) return "PEM";
-        if (Lower.endsWith(".crt") || Lower.endsWith(".cer")) return "CRT";
+        String L = Path.toLowerCase();
+        if (L.endsWith(".p12") || L.endsWith(".pfx")) return Pkcs12Type;
+        if (L.endsWith(".jks")) return JksType;
+        if (L.endsWith(".pem")) return "PEM";
+        if (L.endsWith(".crt") || L.endsWith(".cer")) return "CRT";
         return Pkcs12Type;
     }
 
     private static KeyStore LoadPkcs12(String Path, String Password) throws Exception {
-        return LoadStandardKeystore(Pkcs12Type, Path, Password);
+        return LoadStandard(Pkcs12Type, Path, Password);
     }
 
     private static KeyStore LoadJks(String Path, String Password) throws Exception {
-        return LoadStandardKeystore(JksType, Path, Password);
+        return LoadStandard(JksType, Path, Password);
     }
 
-    private static KeyStore LoadStandardKeystore(String Type, String Path, String Password) throws Exception {
+    private static KeyStore LoadStandard(String Type, String Path, String Password) throws Exception {
         KeyStore Ks = KeyStore.getInstance(Type);
         try (InputStream In = new FileInputStream(Path)) {
             Ks.load(In, Password == null ? null : Password.toCharArray());
@@ -100,21 +87,30 @@ public final class KeystoreLoader {
     }
 
     /**
-     * Loads a PEM file that contains either:
-     *   a) CERTIFICATE + PRIVATE KEY sections (combined PEM)
-     *   b) Only a CERTIFICATE (treated as truststore entry)
+     * Loads a PEM file. Supports:
+     *   - Combined: CERTIFICATE + PRIVATE KEY in one file
+     *   - Split:    separate cert and key (key path derived: .pem → -key.pem or same file)
+     *   - Cert-only: no private key → treated as trust entry
      *
-     * The private key must be PKCS#8 (-----BEGIN PRIVATE KEY-----).
-     * RSA keys in PKCS#1 (-----BEGIN RSA PRIVATE KEY-----) are also handled.
+     * Private key formats supported:
+     *   PKCS#8:  -----BEGIN PRIVATE KEY-----
+     *   RSA:     -----BEGIN RSA PRIVATE KEY-----
+     *   EC:      -----BEGIN EC PRIVATE KEY-----
      */
-    private static KeyStore LoadPem(String Path, String Password) throws Exception {
+    public static KeyStore LoadPem(String Path, String Password) throws Exception {
         String Content = Files.readString(Paths.get(Path));
         List<X509Certificate> Certs = ExtractCerts(Content);
         PrivateKey PrivKey = ExtractPrivateKey(Content);
 
-        if (Certs.isEmpty()) {
-            throw new CertificateException("No certificates found in PEM file: " + Path);
+        if (PrivKey == null) {
+            String KeyPath = Path.replace(".pem", "-key.pem");
+            if (!KeyPath.equals(Path) && Files.exists(Paths.get(KeyPath))) {
+                Logger.Verbose("PEM: loading separate key file: " + KeyPath);
+                PrivKey = ExtractPrivateKey(Files.readString(Paths.get(KeyPath)));
+            }
         }
+
+        if (Certs.isEmpty()) throw new CertificateException("No certificates found in PEM file: " + Path);
 
         KeyStore Ks = KeyStore.getInstance(Pkcs12Type);
         Ks.load(null, null);
@@ -126,82 +122,158 @@ public final class KeystoreLoader {
                 Password == null ? null : Password.toCharArray(),
                 Certs.toArray(new java.security.cert.Certificate[0])
             );
-            Logger.Verbose("PEM: loaded key + " + Certs.size() + " cert(s)");
+            Logger.Verbose("PEM: loaded key + " + Certs.size() + " cert(s) from " + Path);
         } else {
-            for (int I = 0; I < Certs.size(); I++) {
-                Ks.setCertificateEntry("pem-cert-" + I, Certs.get(I));
-            }
-            Logger.Verbose("PEM: loaded " + Certs.size() + " cert(s) (no private key)");
+            for (int I = 0; I < Certs.size(); I++) Ks.setCertificateEntry("pem-cert-" + I, Certs.get(I));
+            Logger.Verbose("PEM: loaded " + Certs.size() + " cert(s) (no private key) from " + Path);
         }
         return Ks;
     }
 
-    private static KeyStore LoadCrt(String Path) throws Exception {
+    public static KeyStore LoadCrt(String Path) throws Exception {
         List<X509Certificate> Certs = ExtractCerts(Files.readString(Paths.get(Path)));
-        if (Certs.isEmpty()) {
-            throw new CertificateException("No certificates found in CRT file: " + Path);
-        }
+        if (Certs.isEmpty()) throw new CertificateException("No certificates found in CRT file: " + Path);
         KeyStore Ks = KeyStore.getInstance(Pkcs12Type);
         Ks.load(null, null);
-        for (int I = 0; I < Certs.size(); I++) {
-            Ks.setCertificateEntry("crt-cert-" + I, Certs.get(I));
-        }
-        Logger.Verbose("CRT: loaded " + Certs.size() + " cert(s)");
+        for (int I = 0; I < Certs.size(); I++) Ks.setCertificateEntry("crt-cert-" + I, Certs.get(I));
+        Logger.Verbose("CRT: loaded " + Certs.size() + " cert(s) from " + Path);
         return Ks;
     }
 
-    private static List<X509Certificate> ExtractCerts(String Pem) throws Exception {
+    public static List<X509Certificate> ExtractCerts(String Pem) throws Exception {
         CertificateFactory Cf = CertificateFactory.getInstance("X.509");
         List<X509Certificate> Result = new ArrayList<>();
-        int Start = 0;
+        int Pos = 0;
         while (true) {
-            int Begin = Pem.indexOf("-----BEGIN CERTIFICATE-----", Start);
+            int Begin = Pem.indexOf("-----BEGIN CERTIFICATE-----", Pos);
+            if (Begin < 0) break;
             int End = Pem.indexOf("-----END CERTIFICATE-----", Begin);
-            if (Begin < 0 || End < 0) break;
-            String B64 = Pem.substring(Begin + 27, End).replaceAll("\\s", "");
-            byte[] Der = Base64.getDecoder().decode(B64);
-            Result.add((X509Certificate) Cf.generateCertificate(new ByteArrayInputStream(Der)));
-            Start = End + 25;
+            if (End < 0) break;
+            String B64 = Pem.substring(Begin + 27, End).replaceAll("\\s+", "");
+            try {
+                byte[] Der = Base64.getDecoder().decode(B64);
+                Result.add((X509Certificate) Cf.generateCertificate(new ByteArrayInputStream(Der)));
+            } catch (Exception E) {
+                throw new CertificateException(
+                    "Failed to parse certificate at position " + Begin + ": " + E.getMessage(),
+                    E
+                );
+            }
+            Pos = End + 25;
         }
         return Result;
     }
 
-    private static PrivateKey ExtractPrivateKey(String Pem) throws Exception {
-        String[] Markers = { "-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "PKCS8" };
-        int Begin = Pem.indexOf(Markers[0]);
-        int End = Pem.indexOf(Markers[1]);
+    public static PrivateKey ExtractPrivateKey(String Pem) throws Exception {
+        String B64 = null;
+        String Algo = null;
 
-        boolean IsPkcs8 = Begin >= 0 && End > Begin;
-
-        if (!IsPkcs8) {
-            Begin = Pem.indexOf("-----BEGIN RSA PRIVATE KEY-----");
-            End = Pem.indexOf("-----END RSA PRIVATE KEY-----");
-            if (Begin < 0 || End <= Begin) return null;
-            Begin += 31;
-            End = Pem.indexOf("-----END RSA PRIVATE KEY-----");
-        } else {
-            Begin += 28;
-        }
-
-        String B64 = Pem.substring(Begin, End).replaceAll("\\s", "");
-        byte[] Der = Base64.getDecoder().decode(B64);
-
-        try {
-            KeyFactory Kf = KeyFactory.getInstance("RSA");
-            return Kf.generatePrivate(new PKCS8EncodedKeySpec(Der));
-        } catch (Exception E) {
-            try {
-                KeyFactory Kf = KeyFactory.getInstance("EC");
-                return Kf.generatePrivate(new PKCS8EncodedKeySpec(Der));
-            } catch (Exception E2) {
-                throw new InvalidKeyException("Cannot parse private key (tried RSA + EC): " + E2.getMessage());
+        if (Pem.contains("-----BEGIN PRIVATE KEY-----")) {
+            int S = Pem.indexOf("-----BEGIN PRIVATE KEY-----") + 27;
+            int E = Pem.indexOf("-----END PRIVATE KEY-----");
+            if (E > S) {
+                B64 = Pem.substring(S, E).replaceAll("\\s+", "");
+                Algo = "PKCS8";
+            }
+        } else if (Pem.contains("-----BEGIN RSA PRIVATE KEY-----")) {
+            int S = Pem.indexOf("-----BEGIN RSA PRIVATE KEY-----") + 31;
+            int E = Pem.indexOf("-----END RSA PRIVATE KEY-----");
+            if (E > S) {
+                B64 = Pem.substring(S, E).replaceAll("\\s+", "");
+                Algo = "RSA";
+            }
+        } else if (Pem.contains("-----BEGIN EC PRIVATE KEY-----")) {
+            int S = Pem.indexOf("-----BEGIN EC PRIVATE KEY-----") + 30;
+            int E = Pem.indexOf("-----END EC PRIVATE KEY-----");
+            if (E > S) {
+                B64 = Pem.substring(S, E).replaceAll("\\s+", "");
+                Algo = "EC";
             }
         }
+
+        if (B64 == null || B64.isEmpty()) return null;
+
+        byte[] Der;
+        try {
+            Der = Base64.getDecoder().decode(B64);
+        } catch (IllegalArgumentException E) {
+            throw new InvalidKeyException("Private key base64 decode failed: " + E.getMessage());
+        }
+
+        if ("PKCS8".equals(Algo)) {
+            PKCS8EncodedKeySpec Spec = new PKCS8EncodedKeySpec(Der);
+            for (String KAlgo : new String[] { "RSA", "EC", "DSA" }) {
+                try {
+                    return KeyFactory.getInstance(KAlgo).generatePrivate(Spec);
+                } catch (Exception Ignored) {}
+            }
+            throw new InvalidKeyException("PKCS8 key: no supported algorithm matched (tried RSA/EC/DSA)");
+        }
+
+        if ("RSA".equals(Algo)) {
+            try {
+                return KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(Der));
+            } catch (Exception E) {
+                try {
+                    return KeyFactory.getInstance("RSA").generatePrivate(
+                        new java.security.spec.RSAPrivateCrtKeySpec(ParseRsaDer(Der))
+                    );
+                } catch (Exception E2) {
+                    throw new InvalidKeyException("RSA PKCS#1 key parse failed: " + E2.getMessage());
+                }
+            }
+        }
+
+        if ("EC".equals(Algo)) {
+            try {
+                return KeyFactory.getInstance("EC").generatePrivate(new PKCS8EncodedKeySpec(Der));
+            } catch (Exception E) {
+                throw new InvalidKeyException("EC key parse failed: " + E.getMessage());
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Convert PKCS#1 RSA DER to JCA key spec parameters.
+     * PKCS#1 structure: SEQUENCE { version, n, e, d, p, q, dp, dq, qInv }
+     */
+    private static java.security.spec.RSAPrivateCrtKeySpec ParseRsaDer(byte[] Der) throws Exception {
+        java.io.DataInputStream Din = new java.io.DataInputStream(new ByteArrayInputStream(Der));
+        if (Din.read() != 0x30) throw new InvalidKeyException("Not a PKCS#1 SEQUENCE");
+        ReadLength(Din);
+        if (Din.read() != 0x02) throw new InvalidKeyException("Version tag missing");
+        int VLen = ReadLength(Din);
+        Din.skipBytes(VLen);
+        java.math.BigInteger N = ReadInt(Din);
+        java.math.BigInteger E = ReadInt(Din);
+        java.math.BigInteger D = ReadInt(Din);
+        java.math.BigInteger P = ReadInt(Din);
+        java.math.BigInteger Q = ReadInt(Din);
+        java.math.BigInteger Dp = ReadInt(Din);
+        java.math.BigInteger Dq = ReadInt(Din);
+        java.math.BigInteger Qi = ReadInt(Din);
+        return new java.security.spec.RSAPrivateCrtKeySpec(N, E, D, P, Q, Dp, Dq, Qi);
+    }
+
+    private static int ReadLength(java.io.DataInputStream In) throws IOException {
+        int B = In.read();
+        if ((B & 0x80) == 0) return B;
+        int Octets = B & 0x7F;
+        int Len = 0;
+        for (int I = 0; I < Octets; I++) Len = (Len << 8) | In.read();
+        return Len;
+    }
+
+    private static java.math.BigInteger ReadInt(java.io.DataInputStream In) throws IOException {
+        if (In.read() != 0x02) throw new IOException("Expected INTEGER tag");
+        int Len = ReadLength(In);
+        byte[] Bytes = new byte[Len];
+        In.readFully(Bytes);
+        return new java.math.BigInteger(Bytes);
     }
 
     private static void AssertFileExists(String Path) throws FileNotFoundException {
-        if (!Files.exists(Paths.get(Path))) {
-            throw new FileNotFoundException("Certificate file not found: " + Path);
-        }
+        if (!Files.exists(Paths.get(Path))) throw new FileNotFoundException("Certificate file not found: " + Path);
     }
 }
