@@ -215,9 +215,7 @@ public final class KeystoreLoader {
                 return KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(Der));
             } catch (Exception E) {
                 try {
-                    return KeyFactory.getInstance("RSA").generatePrivate(
-                        new java.security.spec.RSAPrivateCrtKeySpec(ParseRsaDer(Der))
-                    );
+                    return KeyFactory.getInstance("RSA").generatePrivate(ParseRsaDer(Der));
                 } catch (Exception E2) {
                     throw new InvalidKeyException("RSA PKCS#1 key parse failed: " + E2.getMessage());
                 }

