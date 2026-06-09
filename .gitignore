@@ -1,0 +1,10 @@
+.env
+.env*
+venv/
+certs/
+*.pem
+*.p12
+target/*.jar
+logs/
+*.log
+rmRefLog.sh
