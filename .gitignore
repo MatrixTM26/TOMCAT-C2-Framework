@@ -1,0 +1,9 @@
+.env
+.env*
+venv/
+Certs/
+*.pem
+*.p12
+target/*.jar
+logs/
+*.log

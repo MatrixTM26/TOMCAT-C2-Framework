@@ -1,0 +1,55 @@
+name: Build TOMCAT C2 Framework
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Clear Maven JavaFX Cache
+        run: rm -rf ~/.m2/repository/org/openjfx
+
+      - name: Build With Maven
+        run: mvn clean package -DskipTests -Plinux
+
+      - name: Copy JAR To Output Folder
+        run: |
+          mkdir -p output
+          JAR=$(ls target/*.jar | grep -v original | head -1)
+          cp -r "$JAR" output/tomcat-c2.jar
+          echo "JAR copied: $JAR"
+
+      - name: Upload JAR As Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tomcat-c2-jar
+          path: output/tomcat-c2.jar
+          retention-days: 30
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v3.0-build-${{ github.run_number }}
+          name: "TOMCAT C2 v3.0 - #${{ github.run_number }}"
+          files: output/tomcat-c2.jar
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
