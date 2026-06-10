@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        />
+        <title>TOMCAT C2 Framework</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Tourney:wght@400;600;700;900&display=swap" rel="stylesheet" />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        />
+        <link rel="stylesheet" href="/static/css/style.css" />
+    </head>
+
+    <body>
+        <div id="app">
+            <div class="mobile-overlay" id="mobile-overlay"></div>
+
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-logo">
+                    <div class="logo-icon-wrap">
+                        <i class="fas fa-terminal"></i>
+                    </div>
+                    <div class="logo-text">
+                        <div class="logo-name">TOMCAT C2</div>
+                        <div class="logo-ver">VERSION 2.0</div>
+                        <div class="logo-tag">PEACE IS NOT AN OPTION</div>
+                    </div>
+                </div>
+                <nav class="sidebar-nav">
+                    <div class="nav-group">
+                        <div class="nav-group-label">MAIN</div>
+                        <div class="tnav-item" data-nav="dashboard">
+                            <i class="fas fa-chart-line"></i
+                            ><span>Dashboard</span>
+                        </div>
+                        <div class="tnav-item" data-nav="agents">
+                            <i class="fas fa-users"></i><span>Agents</span>
+                            <span
+                                class="agent-count-badge tnav-badge"
+                                style="display: none"
+                                >0</span
+                            >
+                        </div>
+                        <div class="tnav-item" data-nav="command">
+                            <i class="fas fa-terminal"></i><span>Console</span>
+                        </div>
+                    </div>
+                    <div class="nav-group">
+                        <div class="nav-group-label">SYSTEM</div>
+                        <div class="tnav-item" data-nav="server">
+                            <i class="fas fa-gear"></i
+                            ><span>Server Config</span>
+                        </div>
+                        <div class="tnav-item" data-nav="logs">
+                            <i class="fas fa-file-alt"></i
+                            ><span>Activity Logs</span>
+                        </div>
+                    </div>
+                    <div class="nav-group">
+                        <div class="nav-group-label">INFO</div>
+                        <div class="tnav-item" data-nav="about">
+                            <i class="fas fa-user-circle"></i><span>About</span>
+                        </div>
+                    </div>
+                    <div class="nav-group">
+                        <div class="nav-group-label">SETTINGS</div>
+                        <div class="sidebar-theme-row">
+                            <span class="sidebar-theme-label">Theme</span>
+                            <button
+                                class="theme-toggle-btn"
+                                id="sidebar-theme-btn"
+                                title="Toggle Theme"
+                            >
+                                <span class="toggle-track">
+                                    <span class="toggle-thumb">
+                                        <i
+                                            class="fas fa-sun"
+                                            id="sidebar-theme-icon"
+                                        ></i>
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </nav>
+                <div class="sidebar-foot">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>2026 CYBERTOM7 OPS</span>
+                </div>
+            </aside>
+
+            <div class="main">
+                <div class="topbar" id="topbar">
+                    <button class="desktop-hamburger" id="desktop-hamburger" title="Toggle Sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="topbar-title" id="topbar-title"
+                        >Dashboard</span
+                    >
+                    <span class="topnav-clock" id="topnav-clock">00:00:00</span>
+                    <button
+                        class="theme-toggle-btn"
+                        id="theme-toggle-btn"
+                        title="Toggle Theme"
+                    >
+                        <span class="toggle-track">
+                            <span class="toggle-thumb">
+                                <i class="fas fa-sun" id="theme-icon"></i>
+                            </span>
+                        </span>
+                    </button>
+                    <button
+                        class="server-toggle"
+                        id="topbar-server-btn"
+                        title="Toggle Server"
+                    >
+                        <span class="server-toggle-track">
+                            <span class="server-toggle-label">OFF</span>
+                            <span class="server-toggle-thumb">
+                                <i class="fas fa-power-off"></i>
+                            </span>
+                            <span class="server-toggle-label on-lbl">ON</span>
+                        </span>
+                    </button>
+                </div>
+
+                <div class="mobile-bar">
+                    <button class="hamburger" id="hamburger">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <span class="mobile-title" id="mobile-title"
+                        >Dashboard</span
+                    >
+                    <div class="mb-spacer"></div>
+                    <span class="topnav-clock" id="mobile-clock">00:00:00</span>
+                    <button
+                        class="theme-toggle-btn"
+                        id="mobile-theme-btn"
+                        title="Toggle Theme"
+                    >
+                        <span class="toggle-track">
+                            <span class="toggle-thumb">
+                                <i
+                                    class="fas fa-sun"
+                                    id="mobile-theme-icon"
+                                ></i>
+                            </span>
+                        </span>
+                    </button>
+                    <button
+                        class="server-toggle"
+                        id="mobile-server-btn"
+                        title="Toggle Server"
+                    >
+                        <span class="server-toggle-track">
+                            <span class="server-toggle-label">OFF</span>
+                            <span class="server-toggle-thumb">
+                                <i class="fas fa-power-off"></i>
+                            </span>
+                            <span class="server-toggle-label on-lbl">ON</span>
+                        </span>
+                    </button>
+                </div>
+
+                <div class="content">
+                    <div class="section" id="section-dashboard">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <i class="fas fa-server stat-ghost"></i>
+                                <div class="stat-label">SERVER STATUS</div>
+                                <div
+                                    class="stat-val offline"
+                                    id="stat-server-status"
+                                >
+                                    <span class="dot"></span>Offline
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <i class="fas fa-users stat-ghost"></i>
+                                <div class="stat-label">ACTIVE AGENTS</div>
+                                <div class="stat-val" id="stat-agents">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <i class="fas fa-network-wired stat-ghost"></i>
+                                <div class="stat-label">CONNECTIONS</div>
+                                <div class="stat-val" id="stat-connections">
+                                    0
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <i class="fas fa-clock stat-ghost"></i>
+                                <div class="stat-label">UPTIME</div>
+                                <div class="stat-val" id="stat-uptime">
+                                    00:00:00
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <div class="card-title">
+                                    <i class="fas fa-broadcast-tower"></i>SERVER
+                                    OVERVIEW
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <div class="info-label">
+                                            SERVER ADDRESS
+                                        </div>
+                                        <div
+                                            class="info-val"
+                                            id="server-address-val"
+                                        >
+                                            XXX.XXX.XXX.XXX
+                                        </div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label">
+                                            SESSION KEY
+                                        </div>
+                                        <div
+                                            class="info-val"
+                                            id="session-key-val"
+                                        >
+                                            XXXXXXXXXXXX
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <div class="card-title">
+                                    <i class="fas fa-project-diagram"></i
+                                    >NETWORK TOPOLOGY
+                                </div>
+                            </div>
+                            <div class="topology-wrap">
+                                <svg id="topologySvg" height="320"></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section" id="section-agents">
+                        <div class="card">
+                            <div class="card-head">
+                                <div class="card-title">
+                                    <i class="fas fa-users"></i>ACTIVE AGENTS
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="agent-cards" id="agent-cards">
+                                    <div class="empty-state">
+                                        <i class="fas fa-satellite-dish"></i>
+                                        <div class="empty-title">
+                                            NO ACTIVE AGENTS
+                                        </div>
+                                        <div class="empty-text">
+                                            Waiting for agents to connect...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section" id="section-command">
+                        <div class="card">
+                            <div class="card-head">
+                                <div class="card-title">
+                                    <i class="fas fa-crosshairs"></i>TARGET
+                                </div>
+                                <span
+                                    class="target-badge none"
+                                    id="target-badge"
+                                >
+                                    <i class="fas fa-dot-circle"></i> NONE
+                                    SELECTED
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="quick-grid" id="quick-grid"></div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <div class="card-title">
+                                    <i class="fas fa-terminal"></i>CONSOLE
+                                    OUTPUT
+                                </div>
+                                <div class="actions-row">
+                                    <button
+                                        class="btn sm btn-outline"
+                                        onclick="copyOutput(this)"
+                                    >
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <button
+                                        class="btn sm btn-outline-red"
+                                        onclick="clearOutput()"
+                                    >
+                                        <i class="fas fa-trash"></i> Clear
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div
+                                    class="terminal"
+                                    id="terminal-output"
+                                ></div>
+                                <div class="cmd-bar">
+                                    <input
+                                        class="form-input"
+                                        id="cmd-input"
+                                        type="text"
+                                        placeholder="Enter command..."
+                                        autocomplete="off"
+                                        spellcheck="false"
+                                    />
+                                    <button
+                                        class="btn"
+                                        onclick="executeCommand()"
+                                    >
+                                        <i class="fas fa-paper-plane"></i> Send
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <div class="card-title">
+                                    <i class="fas fa-upload"></i>FILE TRANSFER
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label class="form-label"
+                                        >Source Path</label
+                                    >
+                                    <input
+                                        class="form-input"
+                                        id="adv-source"
+                                        type="text"
+                                        placeholder="/path/to/source"
+                                    />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label"
+                                        >Destination Path</label
+                                    >
+                                    <input
+                                        class="form-input"
+                                        id="adv-dest"
+                                        type="text"
+                                        placeholder="/path/to/destination"
+                                    />
+                                </div>
+                                <div class="adv-actions">
+                                    <button
+                                        class="btn"
+                                        onclick="downloadFile()"
+                                    >
+                                        <i class="fas fa-download"></i> Download
+                                    </button>
+                                    <button
+                                        class="btn btn-outline"
+                                        onclick="uploadFile()"
+                                    >
+                                        <i class="fas fa-upload"></i> Upload
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section" id="section-server">
+                        <div class="server-grid">
+                            <div class="card">
+                                <div class="card-head">
+                                    <div class="card-title">
+                                        <i class="fas fa-broadcast-tower"></i
+                                        >SERVER CONTROL
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="sphere-section">
+                                        <div class="sphere-wrap" id="sphere-wrap">
+                                            <img src="/static/svg/core.svg" class="core-svg" id="core-svg" alt="C2 Core" draggable="false" />
+                                            <div class="sphere-pulse" id="sphere-pulse"></div>
+                                        </div>
+                                        <div class="sphere-info">
+                                            <div class="sphere-label">STATUS</div>
+                                            <div class="sphere-val" id="sphere-val">OFFLINE</div>
+                                            <div class="sphere-detail" id="sphere-detail">Server not running</div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        class="btn-server start full"
+                                        id="server-toggle-btn"
+                                    >
+                                        <i class="fas fa-play"></i> Start Server
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-head">
+                                    <div class="card-title">
+                                        <i class="fas fa-sliders-h"></i
+                                        >CONFIGURATION
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label class="form-label"
+                                            >Host / Bind Address</label
+                                        >
+                                        <input
+                                            class="form-input"
+                                            id="input-host"
+                                            type="text"
+                                            value="0.0.0.0"
+                                        />
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Port</label>
+                                        <input
+                                            class="form-input"
+                                            id="input-port"
+                                            type="number"
+                                            value="4444"
+                                        />
+                                    </div>
+                                    <div
+                                        class="info-grid"
+                                        style="margin-top: 14px"
+                                    >
+                                        <div class="info-item">
+                                            <div class="info-label">
+                                                Bound Address
+                                            </div>
+                                            <div
+                                                class="info-val"
+                                                id="server-address-val2"
+                                            >
+                                                —
+                                            </div>
+                                        </div>
+                                        <div class="info-item">
+                                            <div class="info-label">
+                                                Session Key
+                                            </div>
+                                            <div
+                                                class="info-val"
+                                                id="session-key-val2"
+                                            >
+                                                —
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section" id="section-logs">
+                        <div class="card">
+                            <div class="card-head">
+                                <div class="card-title">
+                                    <i class="fas fa-file-alt"></i>ACTIVITY LOGS
+                                </div>
+                                <div class="actions-row">
+                                    <button
+                                        class="btn sm btn-outline"
+                                        onclick="copyLogs(this)"
+                                    >
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <button
+                                        class="btn sm btn-outline-red"
+                                        onclick="clearLogs()"
+                                    >
+                                        <i class="fas fa-trash"></i> Clear
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div
+                                    class="terminal"
+                                    id="log-container"
+                                    style="max-height: 520px"
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section" id="section-about">
+                        <div class="card">
+                            <div class="card-head">
+                                <div class="card-title">
+                                    <i class="fas fa-user-circle"></i>DEVELOPER
+                                    INFO
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="about-wrap">
+                                    <div class="about-avatar">
+                                        <i class="fas fa-user-secret"></i>
+                                    </div>
+                                    <div class="about-items">
+                                        <div class="about-row">
+                                            <i class="fas fa-user"></i>
+                                            <span class="ar-label">Author</span>
+                                            <span class="ar-val"
+                                                >MatrixTM26</span
+                                            >
+                                        </div>
+                                        <div class="about-row">
+                                            <i class="fab fa-instagram"></i>
+                                            <span class="ar-label"
+                                                >Instagram</span
+                                            >
+                                            <span class="ar-val"
+                                                ><a
+                                                    href="https://instagram.com/MatrixTM26"
+                                                    target="_blank"
+                                                    rel="noopener"
+                                                    >MatrixTM26</a
+                                                ></span
+                                            >
+                                        </div>
+                                        <div class="about-row">
+                                            <i class="fab fa-github"></i>
+                                            <span class="ar-label">GitHub</span>
+                                            <span class="ar-val"
+                                                ><a
+                                                    href="https://github.com/MatrixTM26"
+                                                    target="_blank"
+                                                    rel="noopener"
+                                                    >MatrixTM26</a
+                                                ></span
+                                            >
+                                        </div>
+                                        <div class="about-row">
+                                            <i class="fas fa-envelope"></i>
+                                            <span class="ar-label">E-Mail</span>
+                                            <span class="ar-val"
+                                                ><a
+                                                    href="/cdn-cgi/l/email-protection"
+                                                    class="__cf_email__"
+                                                    data-cfemail="b1c5dedc86f1d4c9d0dcc1ddd49fd2dedc"
+                                                    >[email&#160;protected]</a
+                                                ></span
+                                            >
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <div class="card-title">
+                                    <i class="fas fa-code"></i>TOOLS INFORMATION
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <div class="info-label">NAME</div>
+                                        <div class="info-val">
+                                            TOMCAT C2 Framework
+                                        </div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label">VERSION</div>
+                                        <div class="info-val">2.0</div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label">TYPE</div>
+                                        <div class="info-val">
+                                            Command &amp; Control
+                                        </div>
+                                    </div>
+                                    <div class="info-item">
+                                        <div class="info-label">POWERED BY</div>
+                                        <div class="info-val">
+                                            Python + Vanilla JS
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head">
+                                <div class="card-title">
+                                    <i class="fas fa-exclamation-triangle"></i
+                                    >DISCLAIMER
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p class="disclaimer-text">
+                                    This tool is created for educational and
+                                    authorized testing purposes only. The
+                                    developer is not responsible for any misuse
+                                    or illegal activities conducted with this
+                                    framework. Always obtain proper
+                                    authorization before testing on any systems
+                                    you do not own.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="bottom-nav">
+                    <div class="bottom-nav-inner">
+                        <div class="bnav-item" data-nav="dashboard">
+                            <div class="bnav-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="bnav-dot"></div>
+                        </div>
+                        <div class="bnav-item" data-nav="agents">
+                            <div class="bnav-icon">
+                                <i class="fas fa-users"></i>
+                                <span
+                                    class="agent-count-badge bnav-badge"
+                                    style="display: none"
+                                    >0</span
+                                >
+                            </div>
+                            <div class="bnav-dot"></div>
+                        </div>
+                        <div class="bnav-item" data-nav="command">
+                            <div class="bnav-icon">
+                                <i class="fas fa-terminal"></i>
+                            </div>
+                            <div class="bnav-dot"></div>
+                        </div>
+                        <div class="bnav-item" data-nav="server">
+                            <div class="bnav-icon">
+                                <i class="fas fa-gear"></i>
+                            </div>
+                            <div class="bnav-dot"></div>
+                        </div>
+                        <div class="bnav-item" data-nav="logs">
+                            <div class="bnav-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div class="bnav-dot"></div>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </div>
+
+        <script src="/static/js/themes/theme.js"></script>
+        <script src="/static/js/sidebar/sidebar.js"></script>
+        <script src="/static/js/script.js"></script>
+    </body>
+</html>
