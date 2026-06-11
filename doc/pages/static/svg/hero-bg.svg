@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="rg1" cx="18%" cy="55%" r="50%">
+      <stop offset="0%" stop-color="#4ade80" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#0a0a0a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="rg2" cx="82%" cy="28%" r="42%">
+      <stop offset="0%" stop-color="#16a34a" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#0a0a0a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="rg3" cx="60%" cy="80%" r="35%">
+      <stop offset="0%" stop-color="#4ade80" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#0a0a0a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow2" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <mask id="fadeLeft">
+      <linearGradient id="flg" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="white" stop-opacity="0"/>
+        <stop offset="25%" stop-color="white" stop-opacity="1"/>
+        <stop offset="100%" stop-color="white" stop-opacity="1"/>
+      </linearGradient>
+      <rect width="1440" height="900" fill="url(#flg)"/>
+    </mask>
+    <mask id="fadeRight">
+      <linearGradient id="frg" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="white" stop-opacity="1"/>
+        <stop offset="75%" stop-color="white" stop-opacity="1"/>
+        <stop offset="100%" stop-color="white" stop-opacity="0"/>
+      </linearGradient>
+      <rect width="1440" height="900" fill="url(#frg)"/>
+    </mask>
+    <clipPath id="svgClip">
+      <rect width="1440" height="900"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1440" height="900" fill="#0a0a0a"/>
+  <rect width="1440" height="900" fill="url(#rg1)"/>
+  <rect width="1440" height="900" fill="url(#rg2)"/>
+  <rect width="1440" height="900" fill="url(#rg3)"/>
+
+  <g opacity="0.035" stroke="#4ade80" stroke-width="0.6" mask="url(#fadeLeft)">
+    <line x1="0" y1="45" x2="1440" y2="45"/><line x1="0" y1="90" x2="1440" y2="90"/>
+    <line x1="0" y1="135" x2="1440" y2="135"/><line x1="0" y1="180" x2="1440" y2="180"/>
+    <line x1="0" y1="225" x2="1440" y2="225"/><line x1="0" y1="270" x2="1440" y2="270"/>
+    <line x1="0" y1="315" x2="1440" y2="315"/><line x1="0" y1="360" x2="1440" y2="360"/>
+    <line x1="0" y1="405" x2="1440" y2="405"/><line x1="0" y1="450" x2="1440" y2="450"/>
+    <line x1="0" y1="495" x2="1440" y2="495"/><line x1="0" y1="540" x2="1440" y2="540"/>
+    <line x1="0" y1="585" x2="1440" y2="585"/><line x1="0" y1="630" x2="1440" y2="630"/>
+    <line x1="0" y1="675" x2="1440" y2="675"/><line x1="0" y1="720" x2="1440" y2="720"/>
+    <line x1="0" y1="765" x2="1440" y2="765"/><line x1="0" y1="810" x2="1440" y2="810"/>
+    <line x1="0" y1="855" x2="1440" y2="855"/>
+    <line x1="60" y1="0" x2="60" y2="900"/><line x1="120" y1="0" x2="120" y2="900"/>
+    <line x1="180" y1="0" x2="180" y2="900"/><line x1="240" y1="0" x2="240" y2="900"/>
+    <line x1="300" y1="0" x2="300" y2="900"/><line x1="360" y1="0" x2="360" y2="900"/>
+    <line x1="420" y1="0" x2="420" y2="900"/><line x1="480" y1="0" x2="480" y2="900"/>
+    <line x1="540" y1="0" x2="540" y2="900"/><line x1="600" y1="0" x2="600" y2="900"/>
+    <line x1="660" y1="0" x2="660" y2="900"/><line x1="720" y1="0" x2="720" y2="900"/>
+    <line x1="780" y1="0" x2="780" y2="900"/><line x1="840" y1="0" x2="840" y2="900"/>
+    <line x1="900" y1="0" x2="900" y2="900"/><line x1="960" y1="0" x2="960" y2="900"/>
+    <line x1="1020" y1="0" x2="1020" y2="900"/><line x1="1080" y1="0" x2="1080" y2="900"/>
+    <line x1="1140" y1="0" x2="1140" y2="900"/><line x1="1200" y1="0" x2="1200" y2="900"/>
+    <line x1="1260" y1="0" x2="1260" y2="900"/><line x1="1320" y1="0" x2="1320" y2="900"/>
+    <line x1="1380" y1="0" x2="1380" y2="900"/>
+  </g>
+
+  <g clip-path="url(#svgClip)">
+    <line x1="0" y1="0" x2="1440" y2="0" stroke="#4ade80" stroke-width="120" opacity="0.015">
+      <animate attributeName="y1" values="-120;1020" dur="6s" repeatCount="indefinite" calcMode="linear"/>
+      <animate attributeName="y2" values="-120;1020" dur="6s" repeatCount="indefinite" calcMode="linear"/>
+    </line>
+  </g>
+
+  <g clip-path="url(#svgClip)" mask="url(#fadeLeft)">
+    <line x1="0" y1="0" x2="0" y2="900" stroke="#4ade80" stroke-width="80" opacity="0.012">
+      <animate attributeName="x1" values="-80;1520" dur="9s" repeatCount="indefinite" calcMode="linear"/>
+      <animate attributeName="x2" values="-80;1520" dur="9s" repeatCount="indefinite" calcMode="linear"/>
+    </line>
+  </g>
+
+  <g opacity="0.055" stroke="#4ade80" mask="url(#fadeLeft)">
+    <line x1="0" y1="0" x2="480" y2="900" stroke-width="1"/>
+    <line x1="120" y1="0" x2="600" y2="900" stroke-width="0.6"/>
+    <line x1="300" y1="0" x2="780" y2="900" stroke-width="0.4" opacity="0.6"/>
+  </g>
+
+  <g filter="url(#glow)" opacity="0.4" mask="url(#fadeRight)">
+    <line x1="240" y1="200" x2="950" y2="480" stroke="#4ade80" stroke-width="0.9"/>
+    <line x1="950" y1="480" x2="1240" y2="170" stroke="#4ade80" stroke-width="0.9"/>
+    <line x1="950" y1="480" x2="1140" y2="680" stroke="#4ade80" stroke-width="0.7"/>
+    <line x1="240" y1="200" x2="580" y2="360" stroke="#4ade80" stroke-width="0.6"/>
+    <line x1="580" y1="360" x2="950" y2="480" stroke="#4ade80" stroke-width="0.6"/>
+    <line x1="580" y1="360" x2="720" y2="140" stroke="#4ade80" stroke-width="0.5" opacity="0.7"/>
+    <line x1="1240" y1="170" x2="1380" y2="400" stroke="#4ade80" stroke-width="0.5" opacity="0.6"/>
+    <line x1="1140" y1="680" x2="860" y2="800" stroke="#4ade80" stroke-width="0.5" opacity="0.5"/>
+    <line x1="860" y1="800" x2="420" y2="740" stroke="#4ade80" stroke-width="0.4" opacity="0.4"/>
+    <line x1="420" y1="740" x2="240" y2="200" stroke="#4ade80" stroke-width="0.3" opacity="0.3"/>
+  </g>
+
+  <g filter="url(#glow2)" opacity="0.7">
+    <circle r="3" fill="#4ade80">
+      <animateMotion dur="4s" repeatCount="indefinite" calcMode="linear"
+        path="M240,200 L950,480 L1240,170"/>
+    </circle>
+    <circle r="3" fill="#4ade80">
+      <animateMotion dur="5.5s" repeatCount="indefinite" calcMode="linear" begin="-2s"
+        path="M950,480 L1140,680 L860,800 L420,740"/>
+    </circle>
+    <circle r="2.5" fill="#4ade80">
+      <animateMotion dur="6s" repeatCount="indefinite" calcMode="linear" begin="-1s"
+        path="M580,360 L950,480 L1240,170 L1380,400"/>
+    </circle>
+  </g>
+
+  <g filter="url(#glow)">
+    <circle cx="950" cy="480" r="6" fill="#4ade80" opacity="0.95">
+      <animate attributeName="opacity" values="0.95;0.4;0.95" dur="2.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="950" cy="480" r="16" fill="none" stroke="#4ade80" stroke-width="1.2" opacity="0.4">
+      <animate attributeName="r" values="16;28;16" dur="2.8s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0;0.4" dur="2.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="950" cy="480" r="30" fill="none" stroke="#4ade80" stroke-width="0.6" opacity="0.15">
+      <animate attributeName="r" values="30;48;30" dur="2.8s" repeatCount="indefinite" begin="-0.4s"/>
+      <animate attributeName="opacity" values="0.15;0;0.15" dur="2.8s" repeatCount="indefinite" begin="-0.4s"/>
+    </circle>
+    <circle cx="240" cy="200" r="4.5" fill="#4ade80" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0.3;0.8" dur="3.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="240" cy="200" r="12" fill="none" stroke="#4ade80" stroke-width="1" opacity="0.3">
+      <animate attributeName="r" values="12;22;12" dur="3.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0;0.3" dur="3.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1240" cy="170" r="4" fill="#4ade80" opacity="0.7">
+      <animate attributeName="opacity" values="0.7;0.25;0.7" dur="4.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1240" cy="170" r="11" fill="none" stroke="#4ade80" stroke-width="0.9" opacity="0.25">
+      <animate attributeName="r" values="11;20;11" dur="4.2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.25;0;0.25" dur="4.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="580" cy="360" r="3.5" fill="#4ade80" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.2;0.6" dur="5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1140" cy="680" r="3.5" fill="#4ade80" opacity="0.55">
+      <animate attributeName="opacity" values="0.55;0.15;0.55" dur="4.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="720" cy="140" r="3" fill="#4ade80" opacity="0.5">
+      <animate attributeName="opacity" values="0.5;0.1;0.5" dur="6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="860" cy="800" r="3" fill="#4ade80" opacity="0.45">
+      <animate attributeName="opacity" values="0.45;0.1;0.45" dur="5.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1380" cy="400" r="2.5" fill="#4ade80" opacity="0.4">
+      <animate attributeName="opacity" values="0.4;0.08;0.4" dur="7s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="420" cy="740" r="2.5" fill="#4ade80" opacity="0.35">
+      <animate attributeName="opacity" values="0.35;0.05;0.35" dur="6.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <g transform="translate(1200,280)" opacity="0.1" fill="none" stroke="#4ade80" mask="url(#fadeLeft)">
+    <circle r="140" stroke-width="0.8"/>
+    <circle r="100" stroke-width="0.6"/>
+    <circle r="60" stroke-width="0.5"/>
+    <circle r="22" stroke-width="0.5" fill="#4ade80" fill-opacity="0.06"/>
+    <line x1="-140" y1="0" x2="140" y2="0" stroke-width="0.4"/>
+    <line x1="0" y1="-140" x2="0" y2="140" stroke-width="0.4"/>
+    <line x1="-99" y1="-99" x2="99" y2="99" stroke-width="0.3"/>
+    <line x1="99" y1="-99" x2="-99" y2="99" stroke-width="0.3"/>
+    <line x1="0" y1="0" x2="138" y2="0" stroke="#4ade80" stroke-width="1.2" opacity="0.5">
+      <animateTransform attributeName="transform" type="rotate" values="0;360" dur="5s" repeatCount="indefinite" calcMode="linear"/>
+    </line>
+    <path d="M0,0 L138,0 A138,138 0 0,0 120,-68 Z" fill="#4ade80" fill-opacity="0.04">
+      <animateTransform attributeName="transform" type="rotate" values="0;360" dur="5s" repeatCount="indefinite" calcMode="linear"/>
+    </path>
+  </g>
+
+  <g transform="translate(180,680)" opacity="0.07" fill="none" stroke="#4ade80">
+    <circle r="70" stroke-width="0.6"/>
+    <circle r="45" stroke-width="0.5"/>
+    <circle r="18" stroke-width="0.4"/>
+    <line x1="-70" y1="0" x2="70" y2="0" stroke-width="0.3"/>
+    <line x1="0" y1="-70" x2="0" y2="70" stroke-width="0.3"/>
+    <line x1="0" y1="0" x2="68" y2="0" stroke-width="0.9" opacity="0.6">
+      <animateTransform attributeName="transform" type="rotate" values="360;0" dur="8s" repeatCount="indefinite" calcMode="linear"/>
+    </line>
+  </g>
+
+  <g opacity="0.05" fill="none" stroke="#4ade80" stroke-width="0.7" mask="url(#fadeLeft)">
+    <polygon points="1060,80 1090,64 1120,80 1120,112 1090,128 1060,112">
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,-12;0,0" dur="7s" repeatCount="indefinite" calcMode="ease"/>
+    </polygon>
+    <polygon points="1300,600 1340,577 1380,600 1380,646 1340,669 1300,646" stroke-width="0.5">
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,10;0,0" dur="9s" repeatCount="indefinite" calcMode="ease"/>
+    </polygon>
+    <polygon points="760,760 785,746 810,760 810,788 785,802 760,788" stroke-width="0.4" opacity="0.6">
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,-8;0,0" dur="6s" repeatCount="indefinite" calcMode="ease"/>
+    </polygon>
+  </g>
+
+  <g opacity="0.06" fill="#4ade80" font-family="Courier New" font-size="10" mask="url(#fadeLeft)">
+    <text x="1040" y="96">
+      <animate attributeName="opacity" values="0;0;0.6;0;0;0" dur="12s" repeatCount="indefinite"/>
+      SYN 0x4a2f8c1e
+    </text>
+    <text x="1160" y="162">
+      <animate attributeName="opacity" values="0;0;0;0.5;0;0" dur="15s" repeatCount="indefinite" begin="-3s"/>
+      ACK 0xdeadbeef
+    </text>
+    <text x="1020" y="330">
+      <animate attributeName="opacity" values="0;0;0;0;0.4;0" dur="18s" repeatCount="indefinite" begin="-7s"/>
+      ESTABLISHED
+    </text>
+    <text x="1200" y="600">
+      <animate attributeName="opacity" values="0;0.3;0;0;0;0" dur="20s" repeatCount="indefinite" begin="-11s"/>
+      RST 0x00ff
+    </text>
+    <text x="1080" y="760">
+      <animate attributeName="opacity" values="0;0;0.4;0;0;0" dur="14s" repeatCount="indefinite" begin="-5s"/>
+      0x1337c0de
+    </text>
+  </g>
+</svg>
